@@ -16,7 +16,7 @@ actually *do* with them?
 The answer implemented here is a full theory of delta-hedging P&L, derived from Itô's
 lemma and the Black-Scholes PDE rather than trading-desk folklore, that reduces "theta
 decay" to a single, testable formula: a delta-hedged position's P&L is
-$\frac{1}{2}\Gamma S^2(\sigma_{\text{realized}}^2 - \sigma_{\text{hedge}}^2)\,dt$. That
+$\frac{1}{2}\Gamma S^2(\sigma_ {\text{realized}}^2 - \sigma_ {\text{hedge}}^2)\,dt$. That
 formula is validated against a real, mechanically simulated self-financing hedge, not just
 computed and assumed correct, and then used as the foundation for a regime-aware
 gamma-scalping strategy: a Gaussian Hidden Markov Model, fit from scratch with Baum-Welch
@@ -274,10 +274,10 @@ envelope is. This is exactly what the CLT promises, and nothing more.
 
 ### Implied-vol solver benchmark
 
-`experiments/run_iv_solver_benchmark.py` prices calls and puts at $\sigma_{\text{true}} =
+`experiments/run_iv_solver_benchmark.py` prices calls and puts at $\sigma_ {\text{true}} =
 0.35$ across a 5x25x2 grid (5 maturities, 25 moneyness levels, calls and puts), hands only
 the resulting price to each solver, and checks the recovered $\sigma$ against
-$\sigma_{\text{true}}$.
+$\sigma_ {\text{true}}$.
 
 | solver | median \|error\| | p99 \|error\| | max \|error\| | mean time/solve |
 | --- | --- | --- | --- | --- |

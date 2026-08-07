@@ -114,7 +114,7 @@ $$\Gamma = \frac{e^{-qT}\phi(d_1)}{S\sigma\sqrt{T}}$$
 where $\phi$ is the standard normal density, not the CDF. Gamma is identical for a call
 and a put at the same strike and maturity, a direct consequence of put-call parity: $C -
 P$ is linear in $S$ (it equals $Se^{-qT} - Ke^{-rT}$ exactly), so its second derivative is
-exactly zero, forcing $\Gamma_{\text{call}} = \Gamma_{\text{put}}$.
+exactly zero, forcing $\Gamma_ {\text{call}} = \Gamma_ {\text{put}}$.
 `tests/test_black_scholes.py::test_gamma_positive_and_equal_for_call_and_put` checks this
 directly. Gamma peaks at the money and collapses toward zero both deep in and deep out of
 the money. That collapse is the whole reason the binomial tree needs a tree-native Greeks
@@ -151,7 +151,7 @@ Identical for calls and puts, same parity argument as gamma. Always positive: mo
 uncertainty about where $S_T$ ends up can only help an option holder, since a payoff of
 $\max(\cdot, 0)$ only benefits from extra spread in the outcome, never loses from it.
 
-**Rho**, $\rho = \partial V/\partial r$, scaled to \$-per-1%-rate-move: $\rho_{\text{call}}
+**Rho**, $\rho = \partial V/\partial r$, scaled to \$-per-1%-rate-move: $\rho_ {\text{call}}
 = \frac{KTe^{-rT}N(d_2)}{100}$, positive because a higher rate raises the forward price
 $Se^{(r-q)T}$, making calls (which profit from $S$ being high) more valuable; the put's
 rho is the negative mirror image.
@@ -176,7 +176,7 @@ checks $E[S_T]$ against $S_0 e^{(r-q)T}$ directly.
 The Monte Carlo price is a sample mean of $M$ i.i.d. discounted payoffs, and two classical
 results govern how it behaves. The **Law of Large Numbers** says it converges to the true
 expectation, the Black-Scholes price, as $M\to\infty$. The **Central Limit Theorem** says
-the standard error of that sample mean shrinks as $\sigma_{\text{payoff}}/\sqrt{M}$: a
+the standard error of that sample mean shrinks as $\sigma_ {\text{payoff}}/\sqrt{M}$: a
 $1/\sqrt{M}$ rate, meaning quadrupling the path count only halves the error.
 `experiments/run_mc_convergence.py` checks this rate empirically — see the README for the
 fitted exponent.
@@ -215,7 +215,7 @@ numerical failure mode, and `binomial.py` checks for it explicitly and raises, s
 "probability" outside $[0,1]$ would make every downstream price meaningless.
 
 Terminal payoffs are computed at every leaf node, and each level is built from the one
-after it: $V_i = e^{-r\,dt}\left[p\,V_{i+1, \text{up}} + (1-p)\,V_{i+1,\text{down}}\right]$,
+after it: $V_i = e^{-r\,dt}\left[p\,V_ {i+1, \text{up}} + (1-p)\,V_ {i+1,\text{down}}\right]$,
 the discounted, probability-weighted average of the two possible next values. For American
 exercise, at every node the code additionally takes
 $\max(\text{continuation value}, \text{intrinsic value})$: the holder gets to choose, at
@@ -239,7 +239,7 @@ $\sum_j w_j \max(\pm(S u^j d^{N-j} - K), 0)$ for fixed weights $w_j$: a sum of t
 of which is **linear in $S$** wherever the $\max(\cdot,0)$ doesn't flip sign. A small bump
 to $S$ almost never crosses one of those sign-flip boundaries, so locally the tree's price
 is exactly linear in $S$, with zero curvature. That means a naive central-difference gamma
-computes $(p_{\text{up}} - 2p_0 + p_{\text{down}})/h^2$, where the numerator is genuinely —
+computes $(p_ {\text{up}} - 2p_0 + p_ {\text{down}})/h^2$, where the numerator is genuinely —
 not approximately — zero up to floating-point rounding, and dividing that by a tiny $h^2$
 amplifies the rounding noise into a number that looks like a real, wrong answer.
 `binomial.py` sidesteps this by reading delta and gamma directly off the tree's own step-1
@@ -251,8 +251,8 @@ test for exactly this failure mode.
 
 ## Implied volatility: existence, uniqueness, and three ways to find it
 
-Given a market price $C_{\text{mkt}}$, define $f(\sigma) = C_{\text{BS}}(\sigma) -
-C_{\text{mkt}}$ and look for $\sigma$ such that $f(\sigma) = 0$. Before picking a method,
+Given a market price $C_ {\text{mkt}}$, define $f(\sigma) = C_ {\text{BS}}(\sigma) -
+C_ {\text{mkt}}$ and look for $\sigma$ such that $f(\sigma) = 0$. Before picking a method,
 it's worth proving this is actually solvable.
 
 Existence comes first. As $\sigma \to 0$, the Black-Scholes call price approaches its
@@ -260,20 +260,20 @@ discounted intrinsic value, $\max(Se^{-qT} - Ke^{-rT}, 0)$: at zero volatility t
 deterministic, so the option is worth exactly its (possibly zero) certain payoff. As
 $\sigma \to \infty$, the call price approaches $Se^{-qT}$: infinite volatility means the
 option is almost certainly exercised, so it converges to the value of just owning the
-stock. Since $C_{\text{BS}}(\sigma)$ is continuous and sweeps from near zero to $Se^{-qT}$
+stock. Since $C_ {\text{BS}}(\sigma)$ is continuous and sweeps from near zero to $Se^{-qT}$
 as $\sigma$ ranges over $(0,\infty)$, the **Intermediate Value Theorem** guarantees a root
 exists for any market price strictly between those two bounds — any price consistent with
 no-arbitrage.
 
 Uniqueness follows almost as easily. Vega, $\partial C/\partial \sigma$, is positive
 everywhere (see the Greeks section — it's a product of manifestly positive terms), so
-$C_{\text{BS}}(\sigma)$ is strictly increasing, and a strictly increasing continuous
+$C_ {\text{BS}}(\sigma)$ is strictly increasing, and a strictly increasing continuous
 function can cross any horizontal line at most once. Existence plus uniqueness together
 mean there's exactly one implied volatility for any valid market price.
 `test_implied_vol.py::test_root_is_unique_...` checks the monotonicity directly.
 
 **Newton-Raphson** is the fastest of the three when it works:
-$\sigma_{n+1} = \sigma_n - f(\sigma_n)/f'(\sigma_n)$, where $f'$ is vega. It converges
+$\sigma_ {n+1} = \sigma_n - f(\sigma_n)/f'(\sigma_n)$, where $f'$ is vega. It converges
 quadratically near the root — each step roughly squares the number of correct digits —
 because Newton's method is really just repeatedly replacing $f$ with its local linear
 (tangent-line) approximation and solving that exactly. How good an approximation a
@@ -323,7 +323,7 @@ The second is to iterate with Halley's method instead of Newton's. Halley's upda
 the price's curvature in $\sigma$, the second derivative $f''$, on top of its slope
 ($f'$ = vega):
 
-$$\sigma_{n+1} = \sigma_n - \frac{f(\sigma_n)/f'(\sigma_n)}{1 - \dfrac{f(\sigma_n)f''(\sigma_n)}{2f'(\sigma_n)^2}}$$
+$$\sigma_ {n+1} = \sigma_n - \frac{f(\sigma_n)/f'(\sigma_n)}{1 - \dfrac{f(\sigma_n)f''(\sigma_n)}{2f'(\sigma_n)^2}}$$
 
 When $f$ is locally linear ($f''=0$), the denominator is exactly 1 and this reduces to
 plain Newton. But whenever $f$ curves, the denominator bends the step size to compensate,
@@ -398,7 +398,7 @@ folklore.
 
 Here's the setup. A trader holds a `Structure` — any combination of option legs; the sign
 convention above means this covers long or short positions with no extra casework — and
-continuously **delta-hedges** it: holds $-\Delta_{\text{portfolio}}$ shares of stock, so
+continuously **delta-hedges** it: holds $-\Delta_ {\text{portfolio}}$ shares of stock, so
 the combined position (options plus hedge) has zero delta at every instant. Let
 
 $$\Pi_t = V_t - \Delta_t S_t$$
@@ -438,7 +438,7 @@ $V - \Delta S = \Pi$ in cash at the risk-free rate. They cancel against the inte
 actually credited to the hedge's cash account in `hedging.py`'s `cash *= exp(r*dt)` step.
 What's left, after that cancellation, is the entire economic content of delta-hedging P&L:
 
-$$\boxed{d\Pi_{\text{net}} = \frac{1}{2}\Gamma\,S^2\left(\sigma_r^2 - \sigma_h^2\right)dt}$$
+$$\boxed{d\Pi_ {\text{net}} = \frac{1}{2}\Gamma\,S^2\left(\sigma_r^2 - \sigma_h^2\right)dt}$$
 
 Read literally: a delta-hedged position's P&L, at every instant, is proportional to its
 gamma times the squared-volatility gap between what actually happened and what was priced
@@ -470,20 +470,20 @@ checked directly in `tests/test_hedging.py` and in the frequency sweep in
 
 Returns are drawn from one of $K$ (here, 2) Gaussian "regimes," and the active regime
 follows its own Markov chain that's never directly observed, only inferred from its
-fingerprint on the returns. The parameters are $\pi_i = P(\text{state}_0 = i)$,
-$A_{ij} = P(\text{state}_{t+1}=j \mid \text{state}_t = i)$ (the transition matrix), and
+fingerprint on the returns. The parameters are $\pi_i = P(\text{state}_ 0 = i)$,
+$A_ {ij} = P(\text{state}_ {t+1}=j \mid \text{state}_ t = i)$ (the transition matrix), and
 $(\mu_i, \sigma_i)$, the emission distribution of a return while in state $i$.
 
-Define $\hat\alpha_t(i) = P(\text{state}_t = i \mid \text{returns}_{0:t})$, the filtered,
+Define $\hat\alpha_t(i) = P(\text{state}_ t = i \mid \text{returns}_ {0:t})$, the filtered,
 strictly causal probability of being in state $i$ having seen only data up to and
 including $t$. It has a clean recursion:
 
-$$c_t\,\hat\alpha_t(j) = b_j(x_t) \sum_i \hat\alpha_{t-1}(i)\,A_{ij}$$
+$$c_t\,\hat\alpha_t(j) = b_j(x_t) \sum_i \hat\alpha_ {t-1}(i)\,A_ {ij}$$
 
 where $b_j(x_t) = N(x_t; \mu_j, \sigma_j^2)$ is the emission density and $c_t$ is chosen so
 $\hat\alpha_t$ sums to 1. This $c_t$ isn't just a normalization convenience. It equals
-$P(x_t \mid x_{0:t-1})$, the one-step-ahead predictive probability of the observation
-actually seen, which means $\prod_t c_t = P(x_{0:T})$, the total data likelihood. So
+$P(x_t \mid x_ {0:t-1})$, the one-step-ahead predictive probability of the observation
+actually seen, which means $\prod_t c_t = P(x_ {0:T})$, the total data likelihood. So
 $\sum_t \log c_t$ recovers the model's log-likelihood for free, as a byproduct of the same
 recursion that computes the filtered probabilities. `filtered_state_probs` in `regime.py`
 is exactly $\hat\alpha$, and it's what a live strategy is allowed to condition on, since
@@ -493,7 +493,7 @@ A second recursion, run backward from $T-1$ down to $0$, computes $\hat\beta_t(i
 measure, consistently rescaled using the same $c_t$'s from the forward pass, of how
 probable all the future observations are given state $t = i$. Combined:
 
-$$\gamma_t(i) = \hat\alpha_t(i)\,\hat\beta_t(i) = P(\text{state}_t = i \mid \text{ALL the data})$$
+$$\gamma_t(i) = \hat\alpha_t(i)\,\hat\beta_t(i) = P(\text{state}_ t = i \mid \text{ALL the data})$$
 
 exactly, with no further renormalization needed — a consequence of how the forward and
 backward scaling factors are constructed to cancel against each other. This is the best
@@ -503,10 +503,10 @@ information from after $t$.
 
 Baum-Welch is the EM algorithm applied to this model. An E-step runs forward-backward
 under the current parameter guess to get $\gamma_t(i)$ and the pairwise
-$\xi_t(i,j) = P(\text{state}_t=i, \text{state}_{t+1}=j \mid \text{all data})$; an M-step
+$\xi_t(i,j) = P(\text{state}_ t=i, \text{state}_ {t+1}=j \mid \text{all data})$; an M-step
 then re-estimates every parameter as a closed-form, $\gamma$/$\xi$-weighted MLE:
 
-$$\pi_i \leftarrow \gamma_0(i) \qquad A_{ij} \leftarrow \frac{\sum_t \xi_t(i,j)}{\sum_t \gamma_t(i)} \qquad \mu_i \leftarrow \frac{\sum_t \gamma_t(i)\,x_t}{\sum_t \gamma_t(i)} \qquad \sigma_i^2 \leftarrow \frac{\sum_t \gamma_t(i)(x_t - \mu_i)^2}{\sum_t \gamma_t(i)}$$
+$$\pi_i \leftarrow \gamma_0(i) \qquad A_ {ij} \leftarrow \frac{\sum_t \xi_t(i,j)}{\sum_t \gamma_t(i)} \qquad \mu_i \leftarrow \frac{\sum_t \gamma_t(i)\,x_t}{\sum_t \gamma_t(i)} \qquad \sigma_i^2 \leftarrow \frac{\sum_t \gamma_t(i)(x_t - \mu_i)^2}{\sum_t \gamma_t(i)}$$
 
 Each M-step is a weighted version of the ordinary Gaussian MLE, where the weight on
 observation $t$ for state $i$ is how much of the soft posterior mass at $t$ belongs to
