@@ -11,16 +11,18 @@ just asserted.
 Most options-pricer projects stop at "here's Black-Scholes, here's Monte Carlo, here's a
 payoff diagram." This one treats that as the *setup*, not the destination. The real
 question it asks is: once you can price an option and compute its Greeks, what do you
-actually *do* with them? The answer implemented here is a full theory of delta-hedging
-P&L — derived from Itô's lemma and the Black-Scholes PDE, not folklore — that reduces
-"theta decay" to a single, testable formula: a delta-hedged position's P&L is
+actually *do* with them?
+
+The answer implemented here is a full theory of delta-hedging P&L, derived from Itô's
+lemma and the Black-Scholes PDE rather than trading-desk folklore, that reduces "theta
+decay" to a single, testable formula: a delta-hedged position's P&L is
 $\frac{1}{2}\Gamma S^2(\sigma_{\text{realized}}^2 - \sigma_{\text{hedge}}^2)\,dt$. That
-formula is validated against a real, mechanically simulated self-financing hedge (not just
-computed and assumed correct), and then used as the foundation for a regime-aware
+formula is validated against a real, mechanically simulated self-financing hedge, not just
+computed and assumed correct, and then used as the foundation for a regime-aware
 gamma-scalping strategy: a Gaussian Hidden Markov Model, fit from scratch with Baum-Welch
 and decoded with Viterbi, detects which volatility regime is active from a strictly causal
-rolling window of returns, and switches between being long or short gamma accordingly.
-The strategy is graded honestly against fixed baselines, including in the case where it
+rolling window of returns and switches between being long or short gamma accordingly. The
+strategy is graded honestly against fixed baselines, including in the case where it
 doesn't clearly win.
 
 Everything is organized around a small set of design choices, explained in
@@ -74,52 +76,54 @@ gamma/theta P&L identity, and the HMM math — live in [BACKGROUND.md](BACKGROUN
 ## Background
 
 Black-Scholes prices every option on a stock off one number, $\sigma$, held constant
-across every strike and every maturity. Two things immediately go wrong with that in
-practice, and this project is organized around actually measuring both of them instead of
-mentioning them in passing:
+across every strike and every maturity. Two things go wrong with that in practice, and
+this project is organized around actually measuring both instead of mentioning them in
+passing:
 
 1. **The market doesn't believe the constant-vol assumption either.** Invert real option
    prices for their implied volatility and plot it against strike, and you get a smile or
-   skew, not a flat line — direct empirical evidence the model's central assumption is
-   false (`surface.py`, `experiments/run_vol_surface.py`).
-2. **If you trade options assuming a $\sigma$ that turns out to be wrong, there's a precise
-   dollar cost (or benefit) to being wrong, and it's computable.** That's the gamma/theta
-   P&L identity this project derives and validates, and it's the mechanism `theta decay`
-   and `gamma scalping` actually refer to, once you write down the math instead of
-   trading the words as folklore.
+   skew, not a flat line — direct empirical evidence that the model's central assumption
+   is false (`surface.py`, `experiments/run_vol_surface.py`).
+2. **If you trade options assuming a $\sigma$ that turns out to be wrong, there's a
+   precise dollar cost or benefit to being wrong, and it's computable.** That's the
+   gamma/theta P&L identity this project derives and validates, and it's the mechanism
+   `theta decay` and `gamma scalping` actually refer to, once you write down the math
+   instead of trading the words as folklore.
 
-Once that mechanism is on solid footing, the natural next question is: can you *predict*,
-even crudely, which side of that formula you want to be on? That's what the volatility
-regime detector is for — not because a 2-state Gaussian HMM is a sophisticated forecast of
-real markets, but because it's the simplest tool that turns "I think volatility is about
-to change" into a testable, causal, backtestable decision rule, and testing it honestly
-(including reporting when it doesn't clearly help) is more informative than either
-skipping the test or only reporting favorable results.
+Once that mechanism is on solid footing, the natural next question is whether you can
+predict, even crudely, which side of that formula you want to be on. That's what the
+volatility regime detector is for — not because a 2-state Gaussian HMM is a sophisticated
+forecast of real markets, but because it's the simplest tool that turns "I think
+volatility is about to change" into a testable, causal, backtestable decision rule.
+Testing it honestly, including reporting when it doesn't clearly help, is more informative
+than either skipping the test or only reporting favorable results.
 
 ## Architecture
 
-**Functional core, imperative shell.** Every pricing formula — `black_scholes.price`,
-`black_scholes.analytic_greeks`, `monte_carlo.price`, `binomial.price_and_greeks`, all
-three IV solvers' `solve` functions — is a plain function of plain floats (and a `numpy`
-array or two), with no hidden state and no side effects. You can call them directly, unit
-test them in isolation, or compose them into a new experiment without ever touching a
-class. A thin layer of classes (`BlackScholesEngine`, `MonteCarloEngine`,
-`BinomialEngine`) then adapts each pure function set to a common interface so it can be
-swapped in generically. This split exists because the two halves have genuinely different
-correctness properties to get right: the functional core is "is this formula correct,"
-checkable by unit tests and cross-validation against a structurally different method
-(closed form vs. simulation vs. lattice all agreeing is much stronger evidence than any
-one of them being merely self-consistent); the shell is "does this fit the same interface
-as every other pricing algorithm," checkable by whether experiments can iterate over
-engines generically.
+The package is split into a **functional core** and a thin **imperative shell**. Every
+pricing formula — `black_scholes.price`, `black_scholes.analytic_greeks`,
+`monte_carlo.price`, `binomial.price_and_greeks`, all three IV solvers' `solve` functions —
+is a plain function of plain floats (and a `numpy` array or two), with no hidden state and
+no side effects. You can call them directly, unit test them in isolation, or compose them
+into a new experiment without ever touching a class. A thin layer of classes
+(`BlackScholesEngine`, `MonteCarloEngine`, `BinomialEngine`) then adapts each pure function
+set to a common interface so it can be swapped in generically.
 
-**Pricing algorithms as a Strategy.** `PricingEngine` is an abstract base class with two
+This split exists because the two halves have genuinely different correctness properties
+to get right. The functional core answers "is this formula correct," checkable by unit
+tests and cross-validation against a structurally different method — closed form versus
+simulation versus lattice all agreeing is much stronger evidence than any one of them
+being merely self-consistent. The shell answers "does this fit the same interface as every
+other pricing algorithm," checkable by whether experiments can iterate over engines
+generically.
+
+Pricing algorithms are a **Strategy**. `PricingEngine` is an abstract base class with two
 methods, `price` and `greeks`. `BlackScholesEngine`, `MonteCarloEngine`, and
 `BinomialEngine` each implement `price`; only `BlackScholesEngine` (closed-form
-derivative) and `BinomialEngine` (tree-native, see [BACKGROUND.md](BACKGROUND.md) for why
-naive bumping fails there) override `greeks` — everything else inherits a Template Method
+derivative) and `BinomialEngine` (tree-native — see [BACKGROUND.md](BACKGROUND.md) for why
+naive bumping fails there) override `greeks`. Everything else inherits a Template Method
 default that gets Greeks by bumping each input and re-pricing, the way a desk with only a
-pricing calculator and no formula sheet would. The *choice* of pricing algorithm becomes a
+pricing calculator and no formula sheet would. The choice of pricing algorithm becomes a
 runtime value instead of something wired into a call site:
 
 ```python
@@ -137,25 +141,26 @@ for name in ["black_scholes", "monte_carlo", "binomial"]:
 The same pattern applies to `IVSolver` (`newton` / `brent` / `jaeckel`) and to named
 option structures (`straddle`, `covered_call`, ... via `create_structure`).
 
-**Factories are plain registries, on purpose.** `create_pricing_engine`,
+The factories are plain registries on purpose. `create_pricing_engine`,
 `create_iv_solver`, and `create_structure` each look a name up in a `dict[str, type]` (or
 `dict[str, Callable]`) populated by `register_*` calls next to each implementation.
 Adding a new engine means writing the class and calling `register_engine` beside it, not
-editing a central `if/elif` chain — the registry is closed for modification, open for
+editing a central `if/elif` chain. The registry is closed for modification and open for
 extension, which is what lets `experiments/run_iv_solver_benchmark.py` iterate over
-`available_solvers()` generically instead of a hand-maintained list that silently goes
-stale.
+`available_solvers()` generically instead of relying on a hand-maintained list that
+silently goes stale.
 
-**Immutable value objects.** `OptionSpec` (contract terms: strike, maturity, call/put,
-exercise style) and `MarketData` (spot, rate, vol, dividend yield) are frozen dataclasses,
-deliberately kept as two separate types instead of one bag of parameters — an option's
-terms don't change once written; the market moves every tick, and an engine's signature
-`price(option, market)` documents exactly which half of the world it's allowed to read.
-Nothing in this codebase mutates either one in place; `structures.mark_to_market` and
-`hedging.simulate_delta_hedge` both build new, time-shifted copies via `dataclasses.replace`
-rather than editing an option's maturity as time passes. That immutability is what makes
-it safe to reuse the same `OptionSpec` across an entire sweep of market scenarios without
-worrying that some engine quietly changed it out from under another.
+`OptionSpec` (contract terms: strike, maturity, call/put, exercise style) and `MarketData`
+(spot, rate, vol, dividend yield) are frozen dataclasses, and they're deliberately kept as
+two separate types instead of one bag of parameters. An option's terms don't change once
+written; the market moves every tick; and an engine's signature `price(option, market)`
+documents exactly which half of the world it's allowed to read. Nothing in this codebase
+mutates either one in place — `structures.mark_to_market` and
+`hedging.simulate_delta_hedge` both build new, time-shifted copies via
+`dataclasses.replace` rather than editing an option's maturity as time passes. That
+immutability is what makes it safe to reuse the same `OptionSpec` across an entire sweep
+of market scenarios without worrying that some engine quietly changed it out from under
+another.
 
 ## Package tour
 
@@ -183,34 +188,42 @@ experiments/    one script per experiment; each writes a figure to experiments/r
 tests/          97 tests, one file per module above
 ```
 
-**Pricing.** Black-Scholes for the closed form and the reference every other engine gets
-checked against; Monte Carlo as an independent, structurally different cross-check that
-also demonstrates the common-random-numbers trick for stable simulated Greeks; the
-binomial tree for American exercise, with Greeks read natively off the lattice instead of
-finite-differenced (see [BACKGROUND.md](BACKGROUND.md) for why that distinction matters).
+### Pricing
 
-**Implied volatility.** Newton for speed when it works, Brent for a guaranteed-to-converge
-fallback, Jaeckel for a normalized closed-form initial guess plus cubically-convergent
-Halley iteration — the production default, since it combines Newton-like speed with
-Brent-like robustness (falling back to Brent automatically if Halley doesn't converge).
+Black-Scholes provides the closed form and the reference every other engine gets checked
+against. Monte Carlo is an independent, structurally different cross-check that also
+demonstrates the common-random-numbers trick for stable simulated Greeks. The binomial
+tree handles American exercise, with Greeks read natively off the lattice instead of
+finite-differenced — see [BACKGROUND.md](BACKGROUND.md) for why that distinction matters.
 
-**Structures.** Every named multi-leg strategy (straddle, strangle, covered call,
-protective put, bull call spread, ...) is the same `Structure` type; `payoff_at_expiry`,
+### Implied volatility
+
+Newton for speed when it works, Brent for a guaranteed-to-converge fallback, and Jaeckel
+for a normalized closed-form initial guess plus cubically convergent Halley iteration.
+Jaeckel is the production default, since it combines Newton-like speed with Brent-like
+robustness, falling back to Brent automatically if Halley doesn't converge.
+
+### Structures
+
+Every named multi-leg strategy — straddle, strangle, covered call, protective put, bull
+call spread, and so on — is the same `Structure` type. `payoff_at_expiry`,
 `mark_to_market`, and `portfolio_greeks` are written once, generically over legs, rather
-than once per strategy. Portfolio Greeks aren't decorative — `hedging.py` reads a
+than once per strategy. Portfolio Greeks aren't decorative: `hedging.py` reads a
 structure's live delta to know how many shares to hold, and the regime-aware strategy
 reads its gamma and theta to know what it's actually exposed to.
 
-**Hedging and regime detection.** `hedging.simulate_delta_hedge` is a real, mechanical,
-self-financing replication (cash account, stock account, interest accrual, the works) —
-not just an evaluation of the theoretical formula — so the two can be checked against each
-other. `regime.py` is a 2-state Gaussian HMM implemented from first principles (no
-`hmmlearn` or similar dependency): Baum-Welch for fitting, the forward algorithm alone for
-causal/live regime probabilities, and Viterbi for the best offline state path.
+### Hedging and regime detection
+
+`hedging.simulate_delta_hedge` is a real, mechanical, self-financing replication — cash
+account, stock account, interest accrual, the works — not just an evaluation of the
+theoretical formula, so the two can be checked against each other. `regime.py` is a
+2-state Gaussian HMM implemented from first principles, with no `hmmlearn` or similar
+dependency: Baum-Welch for fitting, the forward algorithm alone for causal/live regime
+probabilities, and Viterbi for the best offline state path.
 
 ## Experiment setup and assumptions
 
-Worth stating plainly, the way any simulation study should:
+A few assumptions, stated plainly, the way any simulation study should:
 
 - **Continuous-time theory, discrete-time simulation.** The gamma/theta P&L formula is
   exact in continuous time; every simulation here rebalances at a finite interval (daily,
@@ -223,9 +236,9 @@ Worth stating plainly, the way any simulation study should:
   Markov chain with persistent regimes and two fixed volatility levels. It exists to give
   the HMM detector a ground truth to be graded against (real markets never provide that);
   the live SPY smile experiment is the one place actual market data enters this project.
-- **The HMM's own regime-classification accuracy was measured against that same simulator's
-  ground truth**, not against real market regimes, which are not directly observable even
-  in hindsight.
+- **The HMM's own regime-classification accuracy was measured against that same
+  simulator's ground truth**, not against real market regimes, which are not directly
+  observable even in hindsight.
 - **Reproducibility.** Every stochastic experiment seeds `numpy.random.default_rng`
   explicitly; `MonteCarloEngine` reseeds identically on every call so `price()` is a pure,
   reproducible function of its arguments (see [BACKGROUND.md](BACKGROUND.md) for why that
@@ -250,14 +263,14 @@ Fitted convergence rate (least-squares slope of $\log(\text{metric})$ vs. $\log 
 | 95% CI width | $M^{-0.498}$ | $M^{-0.5}$ |
 | \|MC − BS\| (single realization) | $M^{-0.420}$ | $M^{-0.5}$ |
 
-The CI-width fit is essentially exact — it's a deterministic function of the sample
-standard error, so it has nothing to average away. The raw-error fit is noisier and
-undershoots the theoretical exponent, which is the honest and expected outcome, not a
-discrepancy: a single realization's error *is itself a random variable*, and even though
-its typical *size* shrinks at the $1/\sqrt{M}$ rate, any one seed's actual trajectory will
-wander around that rate rather than trace it exactly (compare $M=2{,}000$'s
-error of $0.115$ against $M=5{,}000$'s $0.305$ — the error isn't monotonic
-run-to-run, only its envelope is). This is exactly what the CLT promises and nothing more.
+The CI-width fit is essentially exact, since it's a deterministic function of the sample
+standard error and has nothing to average away. The raw-error fit is noisier and
+undershoots the theoretical exponent, which is the honest and expected outcome rather than
+a discrepancy: a single realization's error is itself a random variable, and even though
+its typical size shrinks at the $1/\sqrt{M}$ rate, any one seed's actual trajectory
+wanders around that rate rather than tracing it exactly. Compare $M=2{,}000$'s error of
+$0.115$ against $M=5{,}000$'s $0.305$: the error isn't monotonic run-to-run, only its
+envelope is. This is exactly what the CLT promises, and nothing more.
 
 ### Implied-vol solver benchmark
 
@@ -272,16 +285,16 @@ $\sigma_{\text{true}}$.
 | Brent | 4.7×10⁻¹² | 9.5×10⁻⁸ | 3.6×10⁻⁷ | 161 µs |
 | Jaeckel | 6.1×10⁻¹⁶ | 1.5×10⁻¹¹ | 8.9×10⁻⁸ | 177 µs |
 
-Newton's median error is the smallest of the three (it's genuinely faster and just as
-accurate *when it works*), but 14.4% of the grid hits vega underflow, and its worst case
-recovers $\sigma = 841{,}630.998$ against a true value of $0.35$ — not "imprecise," a
-completely nonsensical number produced by a division-by-near-zero that compounded over a
-few iterations before the safety check finally caught it (the mechanism is in
+Newton's median error is the smallest of the three — it's genuinely faster and just as
+accurate when it works — but 14.4% of the grid hits vega underflow, and its worst case
+recovers $\sigma = 841{,}630.998$ against a true value of $0.35$. That's not imprecise,
+it's a completely nonsensical number produced by a division-by-near-zero that compounded
+over a few iterations before the safety check finally caught it (the mechanism is in
 [BACKGROUND.md](BACKGROUND.md)). Brent and Jaeckel never do this: worst case for both is
-error on the order of $10^{-7}$, everywhere on the grid, at roughly 30-45% more time per
-solve. This is the concrete case for why `jaeckel.py` — not Newton — is the default used
-by `surface.py` and `data.py` for building an entire implied-vol surface out of a live
-options chain: a single silent Newton blow-up would corrupt the whole surface at one
+error on the order of $10^{-7}$ everywhere on the grid, at roughly 30-45% more time per
+solve. This is the concrete case for why `jaeckel.py`, not Newton, is the default used by
+`surface.py` and `data.py` for building an entire implied-vol surface out of a live
+options chain — a single silent Newton blow-up would corrupt the whole surface at one
 strike, and there's no way to tell which strike without checking every single result
 against a sanity range.
 
@@ -319,20 +332,20 @@ P&L against the closed-form prediction from the same simulated path:
 | 0.28 | −4.315 | −4.302 | −0.013 |
 | 0.38 | −9.766 | −9.757 | −0.009 |
 
-The sign and shape are exactly as the theory predicts: short gamma profits when the world
+The sign and shape are exactly as the theory predicts. Short gamma profits when the world
 turns out calmer than priced ($\sigma_r < \sigma_h$), loses when it's wilder, and is
-statistically indistinguishable from zero — $+0.033 \pm 0.038$ (1 SE) — at the one point
-where realized and hedge volatility coincide, i.e. selling "fair" volatility and hedging it
-perfectly breaks even, on average, exactly as the derivation demands. The gap between
-simulated and theoretical P&L is small and roughly symmetric around zero across the sweep,
-consistent with it being discretization noise rather than a systematic error.
+statistically indistinguishable from zero, $+0.033 \pm 0.038$ (1 SE), at the one point
+where realized and hedge volatility coincide. Selling "fair" volatility and hedging it
+perfectly breaks even on average, exactly as the derivation demands. The gap between
+simulated and theoretical P&L is small and roughly symmetric around zero across the
+sweep, consistent with it being discretization noise rather than a systematic error.
 
 **Rebalancing frequency**, fixed at realized vol $=0.30$: the mean holds roughly steady
 ($-5.94$ at 6 rebalances down to $-5.54$ at 126) while the standard deviation across seeds
-falls monotonically from $6.506$ to $2.817$ as rebalancing goes from weekly-ish to daily —
-exactly the predicted split between an unbiased mean and shrinking hedging-error variance.
-(At 252 rebalances the std ticks back up slightly, to $2.871$; with 300 seeds per point
-that's within sampling noise, not a reversal of the trend.)
+falls monotonically from $6.506$ to $2.817$ as rebalancing goes from weekly-ish to daily.
+That's exactly the predicted split between an unbiased mean and shrinking hedging-error
+variance. (At 252 rebalances the std ticks back up slightly, to $2.871$; with 300 seeds
+per point, that's within sampling noise, not a reversal of the trend.)
 
 ### Regime-aware gamma scalping — flagship, part 2
 
@@ -360,22 +373,24 @@ scales clearly with how much data the HMM gets to fit on:
 | 120 days | 87.4% |
 | 200 days | 89.8% |
 
-**The honest finding: at 87.4% regime-detection accuracy, the regime-aware strategy does
-not beat the simple always-short-gamma baseline.** Its mean P&L ($+0.450$) is within one
-standard error of the baseline's ($+0.476$; SE $\approx 0.14$ for both), and it shows no
-tail-risk advantage either (p5 of $-3.578$ vs. the baseline's $-3.539$ — marginally worse,
-not better). The mechanism is straightforward once the numbers are laid out: because the
-calm regime is both lower-volatility *and* the persistent, majority-time-share regime
-(stationary probability $\approx 2/3$ under the chosen transition matrix), simply always
-selling gamma at a hedge vol calibrated above the long-run blended volatility already
-captures most of the exploitable structure in this world. A regime detector has to be
-right often enough, and switch decisively enough, to beat a baseline that's *already*
-biased in the right direction most of the time — and a 120-day EM fit, while accurate most
-of the time, still misclassifies roughly one decision in eight, which is enough to erase
-the edge it would otherwise add. This isn't a failure of the detector (its accuracy scales
-sensibly with data, exactly as a small-sample EM fit should) or of the theory (part 1
-above is validated cleanly); it's a genuine, informative negative result about how hard it
-is to convert a moderately-accurate signal into an edge on top of an already-good
+Here's the honest finding: at 87.4% regime-detection accuracy, the regime-aware strategy
+does not beat the simple always-short-gamma baseline. Its mean P&L ($+0.450$) is within
+one standard error of the baseline's ($+0.476$; SE $\approx 0.14$ for both), and it shows
+no tail-risk advantage either — p5 of $-3.578$ against the baseline's $-3.539$, marginally
+worse, not better.
+
+The mechanism is straightforward once the numbers are laid out. The calm regime is both
+lower-volatility and the persistent, majority-time-share regime (stationary probability
+$\approx 2/3$ under the chosen transition matrix), so simply always selling gamma at a
+hedge vol calibrated above the long-run blended volatility already captures most of the
+exploitable structure in this world. A regime detector has to be right often enough, and
+switch decisively enough, to beat a baseline that's already biased in the right direction
+most of the time, and a 120-day EM fit, while accurate most of the time, still
+misclassifies roughly one decision in eight — enough to erase the edge it would otherwise
+add. This isn't a failure of the detector: its accuracy scales sensibly with data, exactly
+as a small-sample EM fit should. It isn't a failure of the theory either, since part 1
+above is validated cleanly. It's a genuine, informative negative result about how hard it
+is to convert a moderately accurate signal into an edge on top of an already-good
 baseline, and it's reported here instead of quietly re-tuned until it looked better.
 
 ### Live SPY volatility surface
