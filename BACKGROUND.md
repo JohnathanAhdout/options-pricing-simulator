@@ -23,13 +23,13 @@ copied without understanding it.
 
 A stock price is modeled as geometric Brownian motion (GBM):
 
-$$dS_t = \mu S_t \, dt + \sigma S_t \, dW_t$$
+$$dS_t = \mu S_t \  dt + \sigma S_t \  dW_t$$
 
 $S_t$ is the price, $\mu$ the real-world drift, $\sigma$ the volatility (held constant
 here — the assumption the rest of this document spends its time poking holes in), and
 $W_t$ a standard Brownian motion: continuous, independent increments, $W_t - W_s \sim
 N(0, t-s)$. $dW_t$ is where the randomness comes from. Over an instant $dt$, the stock
-moves by a deterministic drift $\mu S_t\, dt$ plus a random shock $\sigma S_t\, dW_t$.
+moves by a deterministic drift $\mu S_t\  dt$ plus a random shock $\sigma S_t\  dW_t$.
 
 Black, Scholes, and Merton's key insight, in 1973, was that you can build a portfolio out
 of the option and $\Delta$ shares of stock whose value, over an infinitesimal instant, has
@@ -145,7 +145,7 @@ and there's no missed-dividend cost when short the implicit stock exposure.
 
 **Vega**, $\nu = \partial V/\partial \sigma$, scaled to \$-per-1-vol-point:
 
-$$\nu = \frac{Se^{-qT}\sqrt{T}\,\phi(d_1)}{100}$$
+$$\nu = \frac{Se^{-qT}\sqrt{T}\ \phi(d_1)}{100}$$
 
 Identical for calls and puts, same parity argument as gamma. Always positive: more
 uncertainty about where $S_T$ ends up can only help an option holder, since a payoff of
@@ -161,12 +161,12 @@ rho is the negative mirror image.
 Simulate the risk-neutral terminal distribution directly and average discounted payoffs.
 `simulation.gbm_terminal` draws
 
-$$S_T = S_0 \exp\left[\left(r - q - \frac{\sigma^2}{2}\right)T + \sigma\sqrt{T}\,Z\right], \qquad Z \sim N(0,1)$$
+$$S_T = S_0 \exp\left[\left(r - q - \frac{\sigma^2}{2}\right)T + \sigma\sqrt{T}\ Z\right], \qquad Z \sim N(0,1)$$
 
 Why $-\sigma^2/2$ here but $+\sigma^2/2$ in $d_1$? Because this formula answers a
 different question: what is $S_T$, given that $\ln S_T$ is normally distributed with a
 particular mean and variance under the risk-neutral measure? Itô's lemma applied to
-$\ln S_t$ under GBM gives $d(\ln S_t) = (r - q - \sigma^2/2)\,dt + \sigma\,dW_t$. The
+$\ln S_t$ under GBM gives $d(\ln S_t) = (r - q - \sigma^2/2)\ dt + \sigma\ dW_t$. The
 $-\sigma^2/2$ term is the **Itô correction**: because $\ln$ is concave, $E[\ln S_T] \neq
 \ln E[S_T]$, and the correction is exactly what's needed so that $E[S_T] = S_0
 e^{(r-q)T}$ comes out right despite the concavity — Jensen's inequality biting in exactly
@@ -208,14 +208,14 @@ Recombination is the entire reason a binomial tree is computationally tractable 
 Exactly as in continuous time, pricing under the tree uses a risk-neutral probability $p$,
 chosen so that the tree's one-step expected return matches the risk-neutral drift:
 
-$$p \cdot u + (1-p) \cdot d = e^{(r-q)\,dt} \implies p = \frac{e^{(r-q)dt} - d}{u - d}$$
+$$p \cdot u + (1-p) \cdot d = e^{(r-q)\ dt} \implies p = \frac{e^{(r-q)dt} - d}{u - d}$$
 
 If $dt$ is too large relative to $\sigma$, this can fall outside $(0,1)$. That's a genuine
 numerical failure mode, and `binomial.py` checks for it explicitly and raises, since a
 "probability" outside $[0,1]$ would make every downstream price meaningless.
 
 Terminal payoffs are computed at every leaf node, and each level is built from the one
-after it: $V_i = e^{-r\,dt}\left[p\,V_ {i+1, \text{up}} + (1-p)\,V_ {i+1,\text{down}}\right]$,
+after it: $V_i = e^{-r\ dt}\left[p\ V_ {i+1, \text{up}} + (1-p)\ V_ {i+1,\text{down}}\right]$,
 the discounted, probability-weighted average of the two possible next values. For American
 exercise, at every node the code additionally takes
 $\max(\text{continuation value}, \text{intrinsic value})$: the holder gets to choose, at
@@ -378,9 +378,8 @@ differs.
 With that sign convention, `quantity * (value - entry_price)` gives the correct P&L for
 both long and short legs without a branch. For a long leg ($\text{quantity}=+1$), it's the
 ordinary "what you got minus what you paid." For a short leg ($\text{quantity}=-1$), it
-becomes $-(\text{value} - \text{entry\_price}) = \text{entry\_price} - \text{value}$: you
-keep the credit you received and owe whatever the position is worth now, which is exactly
-right.
+becomes `-(value - entry_price) = entry_price - value`: you keep the credit you received
+and owe whatever the position is worth now, which is exactly right.
 
 Portfolio-level Greeks come almost for free. Because differentiation is linear, the Greeks
 of a portfolio of legs are just the quantity-weighted sum of each leg's own Greeks, with no
@@ -411,9 +410,9 @@ $V(S,t)$ is a twice-differentiable function of the stock price and time, and $S$
 GBM with the actual, realized volatility $\sigma_r$, not necessarily the $\sigma_h$ the
 trader priced and hedges with. Applying Itô's lemma to the option leg gives:
 
-$$dV = \frac{\partial V}{\partial t}dt + \frac{\partial V}{\partial S}dS + \frac{1}{2}\frac{\partial^2 V}{\partial S^2}(dS)^2 = \Theta\,dt + \Delta\,dS + \frac{1}{2}\Gamma\,\sigma_r^2 S^2\,dt$$
+$$dV = \frac{\partial V}{\partial t}dt + \frac{\partial V}{\partial S}dS + \frac{1}{2}\frac{\partial^2 V}{\partial S^2}(dS)^2 = \Theta\ dt + \Delta\ dS + \frac{1}{2}\Gamma\ \sigma_r^2 S^2\ dt$$
 
-using the Itô multiplication rule $(dS)^2 = \sigma_r^2 S^2\,dt$, Brownian motion's
+using the Itô multiplication rule $(dS)^2 = \sigma_r^2 S^2\ dt$, Brownian motion's
 quadratic variation. This is the step where the realized volatility of the actual world
 enters the equation, regardless of what volatility was used to compute $\Theta$ and
 $\Gamma$ themselves.
@@ -421,9 +420,9 @@ $\Gamma$ themselves.
 Now subtract the hedge. The change in the hedged portfolio, excluding financing (cash
 earning $r$ on the stock trade proceeds, handled separately and exactly offset below), is:
 
-$$d\Pi = dV - \Delta\,dS = \Theta\,dt + \frac{1}{2}\Gamma\sigma_r^2 S^2\,dt$$
+$$d\Pi = dV - \Delta\ dS = \Theta\ dt + \frac{1}{2}\Gamma\sigma_r^2 S^2\ dt$$
 
-The $\Delta\,dS$ terms cancel exactly, which is the entire point of delta-hedging: it
+The $\Delta\ dS$ terms cancel exactly, which is the entire point of delta-hedging: it
 removes first-order exposure to the stock's direction, leaving only the second-order
 (convexity) and time-decay terms.
 
@@ -438,7 +437,7 @@ $V - \Delta S = \Pi$ in cash at the risk-free rate. They cancel against the inte
 actually credited to the hedge's cash account in `hedging.py`'s `cash *= exp(r*dt)` step.
 What's left, after that cancellation, is the entire economic content of delta-hedging P&L:
 
-$$\boxed{d\Pi_ {\text{net}} = \frac{1}{2}\Gamma\,S^2\left(\sigma_r^2 - \sigma_h^2\right)dt}$$
+$$\boxed{d\Pi_ {\text{net}} = \frac{1}{2}\Gamma\ S^2\left(\sigma_r^2 - \sigma_h^2\right)dt}$$
 
 Read literally: a delta-hedged position's P&L, at every instant, is proportional to its
 gamma times the squared-volatility gap between what actually happened and what was priced
@@ -478,7 +477,7 @@ Define $\hat\alpha_t(i) = P(\text{state}_ t = i \mid \text{returns}_ {0:t})$, th
 strictly causal probability of being in state $i$ having seen only data up to and
 including $t$. It has a clean recursion:
 
-$$c_t\,\hat\alpha_t(j) = b_j(x_t) \sum_i \hat\alpha_ {t-1}(i)\,A_ {ij}$$
+$$c_t\ \hat\alpha_t(j) = b_j(x_t) \sum_i \hat\alpha_ {t-1}(i)\ A_ {ij}$$
 
 where $b_j(x_t) = N(x_t; \mu_j, \sigma_j^2)$ is the emission density and $c_t$ is chosen so
 $\hat\alpha_t$ sums to 1. This $c_t$ isn't just a normalization convenience. It equals
@@ -493,7 +492,7 @@ A second recursion, run backward from $T-1$ down to $0$, computes $\hat\beta_t(i
 measure, consistently rescaled using the same $c_t$'s from the forward pass, of how
 probable all the future observations are given state $t = i$. Combined:
 
-$$\gamma_t(i) = \hat\alpha_t(i)\,\hat\beta_t(i) = P(\text{state}_ t = i \mid \text{ALL the data})$$
+$$\gamma_t(i) = \hat\alpha_t(i)\ \hat\beta_t(i) = P(\text{state}_ t = i \mid \text{ALL the data})$$
 
 exactly, with no further renormalization needed — a consequence of how the forward and
 backward scaling factors are constructed to cancel against each other. This is the best
@@ -506,7 +505,7 @@ under the current parameter guess to get $\gamma_t(i)$ and the pairwise
 $\xi_t(i,j) = P(\text{state}_ t=i, \text{state}_ {t+1}=j \mid \text{all data})$; an M-step
 then re-estimates every parameter as a closed-form, $\gamma$/$\xi$-weighted MLE:
 
-$$\pi_i \leftarrow \gamma_0(i) \qquad A_ {ij} \leftarrow \frac{\sum_t \xi_t(i,j)}{\sum_t \gamma_t(i)} \qquad \mu_i \leftarrow \frac{\sum_t \gamma_t(i)\,x_t}{\sum_t \gamma_t(i)} \qquad \sigma_i^2 \leftarrow \frac{\sum_t \gamma_t(i)(x_t - \mu_i)^2}{\sum_t \gamma_t(i)}$$
+$$\pi_i \leftarrow \gamma_0(i) \qquad A_ {ij} \leftarrow \frac{\sum_t \xi_t(i,j)}{\sum_t \gamma_t(i)} \qquad \mu_i \leftarrow \frac{\sum_t \gamma_t(i)\ x_t}{\sum_t \gamma_t(i)} \qquad \sigma_i^2 \leftarrow \frac{\sum_t \gamma_t(i)(x_t - \mu_i)^2}{\sum_t \gamma_t(i)}$$
 
 Each M-step is a weighted version of the ordinary Gaussian MLE, where the weight on
 observation $t$ for state $i$ is how much of the soft posterior mass at $t$ belongs to

@@ -16,7 +16,7 @@ actually *do* with them?
 The answer implemented here is a full theory of delta-hedging P&L, derived from Itô's
 lemma and the Black-Scholes PDE rather than trading-desk folklore, that reduces "theta
 decay" to a single, testable formula: a delta-hedged position's P&L is
-$\frac{1}{2}\Gamma S^2(\sigma_ {\text{realized}}^2 - \sigma_ {\text{hedge}}^2)\,dt$. That
+$\frac{1}{2}\Gamma S^2(\sigma_ {\text{realized}}^2 - \sigma_ {\text{hedge}}^2)\ dt$. That
 formula is validated against a real, mechanically simulated self-financing hedge, not just
 computed and assumed correct, and then used as the foundation for a regime-aware
 gamma-scalping strategy: a Gaussian Hidden Markov Model, fit from scratch with Baum-Welch
@@ -252,7 +252,7 @@ Each subsection below reports numbers from an actual run of the corresponding sc
 
 ### Monte Carlo convergence
 
-`experiments/run_mc_convergence.py` prices the same call at $M \in \{100, ..., 10^6\}$
+`experiments/run_mc_convergence.py` prices the same call at $M \in \lbrace100, ..., 10^6\rbrace$
 paths and tracks the estimate, its 95% CI width, and its error against the (known-exact)
 Black-Scholes price of $8.021352$.
 
@@ -300,7 +300,7 @@ against a sanity range.
 
 ### American early-exercise premium
 
-`experiments/run_american_premium.py`, $S=100$, $r=5\%$, $\sigma=25\%$, $T=1$:
+`experiments/run_american_premium.py`, $S=100$, $r=5$%, $\sigma=25$%, $T=1$:
 
 - **Binomial → Black-Scholes convergence** (European call, ATM): error falls from $0.459$
   at 5 steps to $0.00124$ at 2,000 steps — consistent with a CRR tree's known $O(1/N)$
@@ -309,8 +309,8 @@ against a sanity range.
 - **American call = European call, exactly** (max difference across 13 strikes:
   $0.00 \times 10^0$), confirming the textbook result that early exercise of a call is
   never optimal without dividends.
-- **American put premium grows monotonically with moneyness**, from $3.5\%$ of the
-  European put's value at $K/S=0.70$ to $12.6\%$ at $K/S=1.30$ — a clean, textbook-correct
+- **American put premium grows monotonically with moneyness**, from $3.5$% of the
+  European put's value at $K/S=0.70$ to $12.6$% at $K/S=1.30$ — a clean, textbook-correct
   shape, and a genuine dollar amount the binomial tree captures that Black-Scholes
   structurally cannot (a European closed form has no way to represent "the holder might
   act early" at all).
@@ -350,8 +350,8 @@ per point, that's within sampling noise, not a reversal of the trend.)
 ### Regime-aware gamma scalping — flagship, part 2
 
 `experiments/run_regime_gamma_scalping.py` builds a synthetic 2-regime world (calm
-$\sigma=12\%$, turbulent $\sigma=35\%$, persistent Markov switching), prices a straddle at
-the blended hedge vol $\sigma_h = 23.5\%$, and compares three strategies over 400
+$\sigma=12$%, turbulent $\sigma=35$%, persistent Markov switching), prices a straddle at
+the blended hedge vol $\sigma_h = 23.5$%, and compares three strategies over 400
 independent 6-month episodes: **always short gamma**, **always long gamma**, and
 **regime-aware** (a from-scratch HMM refit on a trailing 120-day, strictly causal window
 of returns at the start of each episode, switching stance based on the filtered
