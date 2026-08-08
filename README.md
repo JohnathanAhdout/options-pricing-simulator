@@ -13,14 +13,10 @@ payoff diagram." This one treats that as the *setup*, not the destination. The r
 question it asks is: once you can price an option and compute its Greeks, what do you
 actually *do* with them?
 
-The short answer, in plain English: if you sell an option and hedge it, you've made a bet
-on whether the stock will move around more or less than the volatility you priced it at.
-"Theta decay" is just the price tag on that bet, and this project derives the exact
-formula for it instead of treating it as trading-desk folklore.
-
-The full answer implemented here is a theory of delta-hedging P&L, derived from Itô's
-lemma and the Black-Scholes PDE, that reduces "theta decay" to a single, testable
-formula: a delta-hedged position's P&L is
+Sell an option and hedge it, and you've made a bet on whether the stock moves around more
+or less than the volatility you priced it at. "Theta decay" is the price tag on that bet.
+This project derives the exact formula for it instead of treating it as trading-desk
+folklore, from Itô's lemma and the Black-Scholes PDE. A delta-hedged position's P&L is
 $\frac{1}{2}\Gamma S^2(\sigma_ {\text{realized}}^2 - \sigma_ {\text{hedge}}^2)\ dt$. That
 formula gets checked against a real, mechanically simulated self-financing hedge, not
 just computed and assumed correct, and then used as the foundation for a regime-aware
@@ -172,7 +168,7 @@ another.
 
 ```
 src/optionspricer/
-    market.py          OptionSpec, MarketData, Greeks, PriceResult -- the value objects
+    market.py          OptionSpec, MarketData, Greeks, PriceResult: the value objects
     simulation.py       GBM path/terminal simulation, regime-switching GBM
     surface.py          smile / term structure / surface construction from quotes
     data.py              live options-chain fetch (the only network-touching module)
@@ -381,8 +377,8 @@ point, scales clearly with how much data the HMM gets to fit on:
 | 120 days | 87.4% |
 | 200 days | 89.8% |
 
-Here's the honest finding: at 87.4% regime-detection accuracy, the regime-aware strategy
-does not beat the simple always-short-gamma baseline. Its mean P&L ($+0.450$) is within
+At 87.4% regime-detection accuracy, the regime-aware strategy does not beat the simple
+always-short-gamma baseline. Its mean P&L ($+0.450$) is within
 one standard error of the baseline's ($+0.476$; SE $\approx 0.14$ for both), and it shows
 no tail-risk advantage either. p5 comes in at $-3.578$ against the baseline's $-3.539$,
 marginally worse, not better.
