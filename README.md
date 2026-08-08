@@ -86,11 +86,11 @@ across every strike and every maturity. Two things go wrong with that in practic
 this project is organized around actually measuring both instead of mentioning them in
 passing:
 
-1. **The market doesn't believe the constant-vol assumption either.** Invert real option
+- **The market doesn't believe the constant-vol assumption either.** Invert real option
    prices for their implied volatility and plot it against strike, and you get a smile or
    skew, not a flat line. That's direct empirical evidence the model's central assumption
    is false (`surface.py`, `experiments/run_vol_surface.py`).
-2. **If you trade options assuming a $\sigma$ that turns out to be wrong, there's a
+- **If you trade options assuming a $\sigma$ that turns out to be wrong, there's a
    precise dollar cost or benefit to being wrong, and it's computable.** That's the
    gamma/theta P&L identity this project derives and validates, and it's the mechanism
    `theta decay` and `gamma scalping` actually refer to, once you write down the math
@@ -98,7 +98,7 @@ passing:
 
 Once that mechanism is on solid footing, the natural next question is whether you can
 predict, even crudely, which side of that formula you want to be on. That's what the
-volatility regime detector is for. Not because a 2-state Gaussian HMM is a sophisticated
+volatility regime detector is for. Not because a 2-state Gaussian HMM is a serious
 forecast of real markets, but because it's the simplest tool that turns "I think
 volatility is about to change" into a testable, causal, backtestable decision rule.
 Testing it honestly, including reporting when it doesn't clearly help, tells you more
@@ -206,8 +206,8 @@ finite-differenced. See [BACKGROUND.md](BACKGROUND.md) for why that distinction 
 
 Newton for speed when it works, Brent for a guaranteed-to-converge fallback, and Jaeckel
 for a normalized closed-form initial guess plus cubically convergent Halley iteration.
-Jaeckel is the production default, since it combines Newton-like speed with Brent-like
-robustness, falling back to Brent automatically if Halley doesn't converge.
+Jaeckel is the production default, since it combines Newton-like speed with Brent's
+guaranteed convergence, falling back to Brent automatically if Halley doesn't converge.
 
 ### Structures
 
