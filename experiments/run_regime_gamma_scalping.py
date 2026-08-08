@@ -3,9 +3,9 @@ the theory from `run_gamma_theta_pnl.py` into an actual trading edge?
 
 Part 1 established the mechanism: a delta-hedged position's P&L is driven
 by the gap between realized and hedged volatility, weighted by gamma. That
-suggests a strategy -- be short gamma (sell options, collect theta) when
+suggests a strategy: be short gamma (sell options, collect theta) when
 you expect calm markets, be long gamma (buy options, pay theta) when you
-expect turbulence -- but it requires an actual forecast of which regime is
+expect turbulence, but it requires an actual forecast of which regime is
 coming, not hindsight.
 
 This experiment builds a synthetic world with two hidden volatility
@@ -13,7 +13,7 @@ regimes (calm and turbulent, Markov-switching, see
 `simulation.regime_switching_gbm_path`), fits the from-scratch HMM in
 `regime.py` on a rolling, strictly causal window of realized returns (no
 peeking at the future), and uses the filtered regime probability to choose
-a stance -- long gamma, short gamma, or flat when unsure -- re-hedged
+a stance (long gamma, short gamma, or flat when unsure), re-hedged
 daily via the same `simulate_delta_hedge` engine part 1 already validated.
 It's compared against two baselines: always-short-gamma (pure theta
 harvesting, part 1's position) and always-long-gamma (pure long
@@ -54,8 +54,8 @@ FIT_WINDOW = 120  # trailing days of returns the HMM is refit on before each epi
 
 def stance_from_regime_prob(p_turbulent: float, confidence: float = 0.65) -> str:
     """Long gamma if the detector is confident the turbulent regime is
-    active, short gamma if confident it's calm, flat (sit out) if unsure --
-    a real strategy has to be able to say "I don't know" instead of always
+    active, short gamma if confident it's calm, flat (sit out) if unsure.
+    A real strategy has to be able to say "I don't know" instead of always
     taking a position."""
     if p_turbulent > confidence:
         return "long"
@@ -95,15 +95,15 @@ def run_episode(seed: int, strategy: str) -> float:
 
     # `simulate_delta_hedge` draws its own fresh path internally, which would hedge
     # a *different* random path than the one the stance decision above was actually
-    # based on -- so the hedge P&L has to be computed along this exact episode_prices
+    # based on, so the hedge P&L has to be computed along this exact episode_prices
     # path instead, via the small local reimplementation below.
     return _hedge_along_path(structure, episode_prices, R, HEDGE_VOL, T, N_STEPS)
 
 
 def _hedge_along_path(structure, path: np.ndarray, r: float, hedge_vol: float, maturity: float, n_steps: int) -> float:
     """Same self-financing delta-hedge accounting as `simulate_delta_hedge`,
-    but driven by an externally supplied path instead of simulating its own
-    -- needed here so the hedge P&L is computed along the *actual* regime-
+    but driven by an externally supplied path instead of simulating its own.
+    Needed here so the hedge P&L is computed along the *actual* regime-
     switching path the stance decision was based on."""
     from optionspricer.structures.base import mark_to_market, portfolio_greeks
     from optionspricer.hedging import _shift
@@ -150,7 +150,7 @@ print(f"\nRegime strategy mean P&L minus the better fixed baseline: {improvement
 # Does the regime edge actually come from detection accuracy? Refit at several
 # window lengths and check classification accuracy against the (simulation-only,
 # never used by the strategy itself) ground-truth regime label at the decision
-# point -- a short window means too few observations for 2-state EM to separate
+# point. A short window means too few observations for 2-state EM to separate
 # "calm" from "turbulent" reliably, so accuracy should rise with window length.
 print(f"\n{'fit window':>10} {'accuracy vs. true regime':>26} {'n decisive calls':>18}")
 for window in [40, 80, 120, 200]:

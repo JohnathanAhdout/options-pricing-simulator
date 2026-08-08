@@ -1,11 +1,10 @@
-
 """Immutable value objects shared by every pricing engine.
 
 The split mirrors how a real desk thinks about an option: the *contract*
 (strike, maturity, call/put, exercise style) never changes once it's written,
 while the *market* (spot, rate, vol, dividend yield) moves every tick. Keeping
-them as two separate frozen dataclasses -- instead of one big bag of
-parameters -- means an engine's signature `price(option, market)` documents
+them as two separate frozen dataclasses, instead of one big bag of
+parameters, means an engine's signature `price(option, market)` documents
 exactly which half of the world it's allowed to read, and nothing in this
 codebase ever mutates an option or a market snapshot in place. That
 immutability is what makes it safe to reuse the same `OptionSpec` across a
@@ -25,8 +24,8 @@ class OptionType(str, Enum):  # inherits str AND Enum: members compare equal to 
 
 
 class ExerciseStyle(str, Enum):  # same str+Enum trick, for the two exercise conventions this package supports
-    EUROPEAN = "european"  # exercise only possible at maturity T -- what the closed form and Monte Carlo engine assume
-    AMERICAN = "american"  # exercise possible any time up to and including T -- only the binomial tree can price this
+    EUROPEAN = "european"  # exercise only possible at maturity T. What the closed form and Monte Carlo engine assume
+    AMERICAN = "american"  # exercise possible any time up to and including T. Only the binomial tree can price this
 
 
 @dataclass(frozen=True, slots=True)  # frozen: mutating a field after construction raises; slots: no per-instance __dict__, less memory, no stray attributes
@@ -38,7 +37,7 @@ class OptionSpec:
     option_type: OptionType  # CALL or PUT
     exercise: ExerciseStyle = ExerciseStyle.EUROPEAN  # defaults to European unless explicitly constructed as American
 
-    def __post_init__(self) -> None:  # dataclass hook, runs immediately after the generated __init__ -- the natural place to enforce invariants
+    def __post_init__(self) -> None:  # dataclass hook, runs immediately after the generated __init__. The natural place to enforce invariants
         if self.strike <= 0:  # a zero or negative strike isn't a real contract
             raise ValueError(f"strike must be positive, got {self.strike}")  # fail immediately at construction, not three formulas later as a mystery NaN
         if self.maturity <= 0:  # a non-positive maturity breaks every formula that divides by sqrt(T)
@@ -46,11 +45,11 @@ class OptionSpec:
 
     @property  # exposes this as `spec.is_call` (no parens) even though it's computed, not stored
     def is_call(self) -> bool:
-        return self.option_type == OptionType.CALL  # True only for calls -- avoids repeating this comparison at every call site in the codebase
+        return self.option_type == OptionType.CALL  # True only for calls. Avoids repeating this comparison at every call site in the codebase
 
     @property
     def is_american(self) -> bool:
-        return self.exercise == ExerciseStyle.AMERICAN  # True only for American exercise -- engines that can't handle early exercise check this and raise
+        return self.exercise == ExerciseStyle.AMERICAN  # True only for American exercise. Engines that can't handle early exercise check this and raise
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,7 +58,7 @@ class MarketData:
 
     spot: float  # S: today's price of the underlying
     rate: float  # r: the continuously-compounded risk-free rate
-    vol: float  # sigma: the volatility used to price/hedge with (not necessarily what actually realizes -- see hedging.py)
+    vol: float  # sigma: the volatility used to price/hedge with (not necessarily what actually realizes; see hedging.py)
     dividend_yield: float = 0.0  # q: continuous dividend yield; defaults to 0 for non-dividend-paying underlyings
 
     def __post_init__(self) -> None:  # same fail-fast validation pattern as OptionSpec

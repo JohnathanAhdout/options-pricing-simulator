@@ -3,7 +3,7 @@
 its legs with whatever `PricingEngine` it's handed, so
 `create_structure("straddle", K=100, T=0.5, market=m, engine=binomial)` and
 `create_structure("straddle", K=100, T=0.5, market=m, engine=black_scholes)`
-build the same *shape* of position priced two different ways -- the
+build the same *shape* of position priced two different ways: the
 strategy (which legs) and the pricing algorithm (how each leg is valued)
 are fully decoupled.
 """

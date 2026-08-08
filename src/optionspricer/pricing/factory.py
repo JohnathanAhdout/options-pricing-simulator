@@ -4,8 +4,8 @@ a config file, a CLI flag, or a sweep over `["black_scholes", "monte_carlo",
 
 It's a registry rather than an if/elif chain on purpose: adding a new engine
 means calling `register_engine` next to the class definition, not editing
-this file. That's the open/closed principle in practice -- this module is
-closed for modification but open for extension -- and it's what lets
+this file. That's the open/closed principle in practice: this module is
+closed for modification but open for extension, and it's what lets
 experiments/*.py iterate over "every registered engine" generically instead
 of hardcoding a list that has to be kept in sync by hand.
 """

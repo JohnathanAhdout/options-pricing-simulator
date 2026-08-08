@@ -1,4 +1,4 @@
-"""Registry-based factory for IV solvers -- same rationale as
+"""Registry-based factory for IV solvers, same rationale as
 `pricing/factory.py`: new solvers register themselves instead of this file
 growing an if/elif chain."""
 

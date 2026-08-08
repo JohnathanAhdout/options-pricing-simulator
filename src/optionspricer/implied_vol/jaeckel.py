@@ -8,15 +8,15 @@ Two ideas, applied in sequence:
    to a function of exactly two dimensionless numbers, (x, theta), instead
    of five separate (S, K, T, r, sigma). That collapse is what makes it
    possible to write down a closed-form, *good* initial guess for theta
-   directly from the normalized price -- see `_initial_theta` below -- so
+   directly from the normalized price (see `_initial_theta` below), so
    the iteration that follows starts close enough to the root that a
    handful of steps is enough, regardless of how deep in/out-of-the-money
    the option is.
 
 2. **Iterate with Halley's method instead of Newton's.** Halley's update
    uses the price's curvature in sigma (f'') on top of its slope (f'),
-   which gives *cubic* convergence -- each step roughly triples the number
-   of correct digits, versus doubling for Newton -- and the curvature term
+   which gives *cubic* convergence: each step roughly triples the number
+   of correct digits, versus doubling for Newton. The curvature term
    also damps the step near-automatically, so it doesn't blow up the way
    Newton can when vega is small.
 
@@ -76,18 +76,18 @@ def solve(
 
     F = S * np.exp((r - q) * T)  # forward price: the risk-neutral expectation of S_T, E^Q[S_T] = F
     discount = np.exp(-r * T)  # PV of $1 at T
-    beta = market_price / (discount * np.sqrt(F * K))  # normalized price -- depends only on (x, theta), not on S/K/T/r separately
+    beta = market_price / (discount * np.sqrt(F * K))  # normalized price, depends only on (x, theta), not on S/K/T/r separately
     x = np.log(F / K)  # log-forward-moneyness: 0 exactly ATM (forward), <0 OTM call, >0 ITM call
 
     beta_intrinsic = max(np.exp(x / 2) - np.exp(-x / 2), 0.0)  # normalized intrinsic value = 2*sinh(x/2) for x>0, else 0
-    beta_tv = beta - beta_intrinsic  # normalized TIME value -- the part that actually depends on sigma; this is what we invert for
+    beta_tv = beta - beta_intrinsic  # normalized TIME value, the part that actually depends on sigma; this is what we invert for
     if beta_tv <= 0:
         return 1e-8  # price is at or below intrinsic: the market is implying essentially zero vol (or a bad/stale quote)
 
     theta = np.clip(abs(_initial_theta(x, beta_tv)), 1e-6, 5.0 * np.sqrt(T)) if T > 0 else 1e-6  # closed-form starting guess for total vol theta = sigma*sqrt(T)
     sigma = np.clip(theta / np.sqrt(T), 1e-6, 5.0)  # convert theta back to a per-year sigma, clipped to a sane range
 
-    for _ in range(max_iter):  # Halley's method: cubic convergence, so this budget is generous -- 3-5 steps is typical
+    for _ in range(max_iter):  # Halley's method has cubic convergence, so this budget is generous: 3-5 steps is typical
         model_price = bs_price(S, K, T, r, sigma, OptionType.CALL, q)  # always price in call space; puts were already converted via parity above
         diff = model_price - market_price  # f(sigma): how far the current guess is from the target price
         if abs(diff) < tol:
@@ -96,11 +96,11 @@ def solve(
         d2_ = d1_ - sigma * np.sqrt(T)
         vega = S * np.exp(-q * T) * np.sqrt(T) * norm.pdf(d1_)  # f'(sigma) = raw vega
         if abs(vega) < 1e-12:
-            break  # flat curve here -- Halley's correction term below would divide by ~0; bail to the Brent fallback instead
+            break  # flat curve here; Halley's correction term below would divide by ~0, so bail to the Brent fallback instead
         vega2 = vega * d1_ * d2_ / sigma  # f'' = d(vega)/d(sigma), standard BS second-derivative result
-        # Halley's update = the plain Newton step (diff/vega), divided by a curvature correction; when
-        # f is exactly linear (f''=0) this correction is 1 and Halley collapses to Newton exactly --
-        # the curvature term is what damps the step and prevents Newton-style overshoot near-zero-vega
+        # Halley's update is the plain Newton step (diff/vega), divided by a curvature correction. When
+        # f is exactly linear (f''=0) this correction is 1 and Halley collapses to Newton exactly.
+        # The curvature term is what damps the step and prevents Newton-style overshoot near-zero-vega
         denom = 1.0 - (diff * vega2) / (2.0 * vega**2)
         sigma -= (diff / vega) / denom if abs(denom) > 1e-12 else diff / vega
         sigma = max(sigma, 1e-8)

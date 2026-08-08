@@ -2,8 +2,8 @@
 
 This is the mechanism behind "theta decay" and "gamma scalping," made
 literal instead of folkloric. A trader who holds an options position and
-delta-hedges it -- buys or sells just enough stock, every rebalance, to
-keep the *combined* position's delta at zero -- is left exposed to exactly
+delta-hedges it, buying or selling just enough stock every rebalance to
+keep the *combined* position's delta at zero, is left exposed to exactly
 one thing: whether the stock moves *more* or *less* than the volatility
 they used to compute their hedge ratios. `simulate_delta_hedge` runs that
 hedge mechanically, tick by tick, as a real self-financing trading strategy
@@ -25,7 +25,7 @@ formula automatically flips relative to a long straddle's, with no extra
 bookkeeping needed). Read literally: a delta-hedged position earns money
 in proportion to its gamma times the *gap* between what volatility
 actually showed up and what volatility was priced in. This is the whole
-economic content of "theta decay" -- theta is the price (via the BS PDE)
+economic content of "theta decay." Theta is the price (via the BS PDE)
 of being long gamma, and whether that price was worth paying is a bet on
 realized vs. hedged volatility, nothing more mystical than that.
 
@@ -71,14 +71,14 @@ def simulate_delta_hedge(
     rng: np.random.Generator,
     q: float = 0.0,
 ) -> HedgeResult:
-    """Delta-hedge `structure` (an options-only position -- it's built with
+    """Delta-hedge `structure` (an options-only position: it's built with
     no stock legs of its own, since the hedge computed here *is* the stock
     leg) from now to `maturity`, rebalancing every dt = maturity / n_steps.
 
     The underlying is simulated at `realized_vol` (the "true," physical
     volatility of the world), while every hedge ratio and every mark is
     computed at `hedge_vol` (what the trader believes/used to price the
-    position) -- the gap between the two is the entire subject of this
+    position). The gap between the two is the entire subject of this
     module. `engine` supplies the Greeks and prices used to compute hedge
     ratios and marks; it does not need to know about `realized_vol` at all,
     since realized volatility only ever drives the simulated path, never
@@ -90,7 +90,7 @@ def simulate_delta_hedge(
             "dynamic stock hedge computed here *is* the stock leg"
         )
 
-    dt = maturity / n_steps  # time between rebalances, in years -- e.g. maturity=0.5, n_steps=126 gives ~1 trading day
+    dt = maturity / n_steps  # time between rebalances, in years, e.g. maturity=0.5, n_steps=126 gives ~1 trading day
     path = gbm_path(S0, maturity, r, realized_vol, q, n_steps, 1, rng)[0]  # the ONE "true" price path this episode will realize, at realized_vol
 
     def hedge_market(S: float) -> MarketData:
@@ -105,19 +105,19 @@ def simulate_delta_hedge(
     pnl_path = np.zeros(n_steps + 1)  # pnl_path[0] is implicitly 0: entering at model value is a zero-NPV trade by construction
 
     for i in range(n_steps):
-        elapsed = i * dt  # time since inception, at the START of this rebalance -- how much each leg's maturity has shrunk by
+        elapsed = i * dt  # time since inception, at the START of this rebalance: how much each leg's maturity has shrunk by
         S_i = path[i]
 
         g = portfolio_greeks(_shift(structure, elapsed), hedge_market(S_i), engine)  # portfolio delta/gamma AS OF right now, priced at hedge_vol
         gamma_path[i] = g.gamma  # stashed for the theoretical-P&L integral below; not used by the hedge mechanics itself
-        target_shares = -g.delta  # hold enough stock to offset the option legs' delta exactly -- this IS the definition of delta-hedged
+        target_shares = -g.delta  # hold enough stock to offset the option legs' delta exactly. This IS the definition of delta-hedged
         cash -= (target_shares - shares) * S_i  # buy/sell the difference at today's price; a self-financing trade, funded from cash
         shares = target_shares
 
         cash *= np.exp(r * dt)  # cash sitting in the account earns (or costs, if negative) the risk-free rate between rebalances
 
         elapsed_next = (i + 1) * dt
-        S_next = path[i + 1]  # the stock has now moved to its next realized-vol-driven price -- this step is where realized vol actually shows up
+        S_next = path[i + 1]  # the stock has now moved to its next realized-vol-driven price. This step is where realized vol actually shows up
         # mark_to_market already nets each leg against its entry_price, i.e. it returns
         # raw_option_value - entry_cost; add entry_cost back to get the raw value, since
         # `cash` separately (and only once) accounted for the entry_cost cash flow at t=0
@@ -125,10 +125,10 @@ def simulate_delta_hedge(
         pnl_path[i + 1] = cash + shares * S_next + raw_option_value  # total book value: cash + stock leg + option leg, marked at hedge_vol
 
     final_pnl = float(pnl_path[-1])
-    S_grid = path[:-1]  # the spot price AT the start of each rebalance interval -- matches where gamma_path[i] was measured
+    S_grid = path[:-1]  # the spot price AT the start of each rebalance interval, matches where gamma_path[i] was measured
     # the discretized version of the module-docstring formula: sum over every rebalance of
     # 0.5*Gamma_i*S_i^2*(sigma_realized^2 - sigma_hedge^2)*dt, using the SAME simulated path and the
-    # SAME gammas the mechanical hedge above actually traded on -- a like-for-like theory-vs-simulation check
+    # SAME gammas the mechanical hedge above actually traded on: a like-for-like theory-vs-simulation check
     theoretical_pnl = float(0.5 * np.sum(gamma_path * S_grid**2 * (realized_vol**2 - hedge_vol**2) * dt))
 
     return HedgeResult(

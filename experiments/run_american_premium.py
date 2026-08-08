@@ -8,9 +8,9 @@ Textbook fact under test: with no dividends, an American *call* is never
 worth exercising early (you'd throw away remaining time value for nothing,
 since the alternative of just selling the call captures the same payoff
 plus whatever time value is left), so American call == European call.
-American *puts* have no such shield -- a deep ITM put on a stock that
+American *puts* have no such shield: a deep ITM put on a stock that
 can't go below zero has an early-exercise incentive from time value on
-the strike alone -- so the premium should show up clearly there, and
+the strike alone, so the premium should show up clearly there, and
 should grow as the put gets deeper in the money.
 
 Run: uv run python experiments/run_american_premium.py

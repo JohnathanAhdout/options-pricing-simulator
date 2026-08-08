@@ -1,5 +1,5 @@
 """Pulls a live SPY options chain and builds the smile, term structure, and
-full volatility surface -- the empirical answer to "is Black-Scholes'
+full volatility surface: the empirical answer to "is Black-Scholes'
 constant-volatility assumption true?" If every strike and every maturity
 implied the same sigma, every line in the left-hand plot would be flat.
 They never are.
@@ -39,7 +39,7 @@ points = implied_vols(quotes, S0, R, solver)
 print(f"Valid IV points after no-arbitrage/sanity filtering: {len(points)} / {len(quotes)}")
 
 if not points:
-    print("No valid IV points recovered (market likely closed with no recent trades) -- nothing to plot.")
+    print("No valid IV points recovered (market likely closed with no recent trades); nothing to plot.")
     sys.exit(0)
 
 maturities = sorted({p.maturity for p in points})

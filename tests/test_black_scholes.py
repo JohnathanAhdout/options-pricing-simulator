@@ -6,7 +6,7 @@ from optionspricer.pricing.black_scholes import BlackScholesEngine, analytic_gre
 
 
 def test_put_call_parity():
-    # C - P = S*e^{-qT} - K*e^{-rT}, for every (S, K, T, r, sigma, q) -- this must hold
+    # C - P = S*e^{-qT} - K*e^{-rT}, for every (S, K, T, r, sigma, q). This must hold
     # exactly regardless of vol, since it follows from static replication, not from BS itself
     S, K, T, r, sigma, q = 100.0, 105.0, 0.75, 0.05, 0.3, 0.02
     call = price(S, K, T, r, sigma, OptionType.CALL, q)

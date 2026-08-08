@@ -5,7 +5,7 @@ Every M in `M_VALUES` reprices the same option from scratch with an
 independent batch of paths, and we track three things against it:
 the point estimate itself, the width of its 95% confidence interval, and
 its raw error against the (known-exact) Black-Scholes price. All three
-are predicted by the Central Limit Theorem to shrink as 1/sqrt(M) -- this
+are predicted by the Central Limit Theorem to shrink as 1/sqrt(M). This
 script checks that prediction against actual simulated numbers instead of
 asserting it and moving on.
 

@@ -3,14 +3,14 @@
 Every formula below is derived and dissected term-by-term in
 `BACKGROUND.md`. This module intentionally keeps two layers apart:
 
-1. A **functional core** -- `d1`, `d2`, `price`, `analytic_greeks` -- plain
+1. A **functional core**, `d1`, `d2`, `price`, `analytic_greeks`: plain
    functions of plain floats, with no state and no side effects. These are
    the formulas, full stop. You can unit-test them, call them from a notebook,
    or reuse them inside the Monte Carlo and binomial engines (e.g. for
    comparison plots) without ever touching the class below.
-2. A thin **imperative shell** -- `BlackScholesEngine` -- that adapts the
-   functional core to the `PricingEngine` interface so it can be swapped in
-   wherever a pricing algorithm is expected.
+2. A thin **imperative shell**, `BlackScholesEngine`: adapts the functional
+   core to the `PricingEngine` interface so it can be swapped in wherever a
+   pricing algorithm is expected.
 
 Only European exercise is supported: the closed form assumes exercise is
 possible exactly once, at T. American-style early exercise breaks the
@@ -31,10 +31,10 @@ def d1(S: float, K: float, T: float, r: float, sigma: float, q: float = 0.0) -> 
     standard deviation of log-return. See BACKGROUND.md for the derivation
     of why the drift term is (r - q + sigma^2/2), not just (r - q)."""
     # log(S/K): log-moneyness, 0 exactly at-the-money, positive if S > K.
-    # (r - q + sigma^2/2)*T: risk-neutral drift of log(S) over [0, T], *including*
-    #   the Ito correction +sigma^2/2 -- because log is concave, E[log S_T] under
+    # (r - q + sigma^2/2)*T: risk-neutral drift of log(S) over [0, T], including
+    #   the Ito correction +sigma^2/2. Because log is concave, E[log S_T] under
     #   the risk-neutral measure is (r - q - sigma^2/2)*T, not (r - q)*T, and d1
-    #   needs the *other* sign convention (+sigma^2/2) by construction -- see
+    #   needs the other sign convention (+sigma^2/2) by construction. See
     #   BACKGROUND.md for exactly where that flips relative to `simulation.py`.
     # dividing by sigma*sqrt(T) (the std dev of log-return over [0, T]) turns the
     #   whole thing into a z-score, which is what lets norm.cdf below be used at all.
@@ -51,8 +51,8 @@ def price(S: float, K: float, T: float, r: float, sigma: float, option_type: Opt
     """Fair value of a European option under Black-Scholes-Merton (with a
     continuous dividend yield q)."""
     D1, D2 = d1(S, K, T, r, sigma, q), d2(S, K, T, r, sigma, q)
-    disc_r = np.exp(-r * T)  # present value of $1 paid at T -- discounts the strike leg
-    disc_q = np.exp(-q * T)  # present value of 1 share's dividend leakage -- discounts the stock leg
+    disc_r = np.exp(-r * T)  # present value of $1 paid at T, discounts the strike leg
+    disc_q = np.exp(-q * T)  # present value of 1 share's dividend leakage, discounts the stock leg
     if option_type == OptionType.CALL:
         # S*disc_q*N(D1): PV of the stock you receive, conditional on finishing ITM, probability-weighted
         # K*disc_r*N(D2): PV of the strike you pay on exercise, weighted by the risk-neutral P(ITM)
@@ -67,7 +67,7 @@ def analytic_greeks(S: float, K: float, T: float, r: float, sigma: float, option
     Every term here is dissected in BACKGROUND.md."""
     D1, D2 = d1(S, K, T, r, sigma, q), d2(S, K, T, r, sigma, q)
     disc_r, disc_q = np.exp(-r * T), np.exp(-q * T)
-    pdf_d1 = norm.pdf(D1)  # the bell-curve height at D1 -- shows up in gamma, vega, and the first term of theta because
+    pdf_d1 = norm.pdf(D1)  # the bell-curve height at D1. Shows up in gamma, vega, and the first term of theta because
     # differentiating N(D1(S)) or N(D1(sigma)) always pulls out phi(D1) via the chain rule (d/dx N(f(x)) = phi(f(x))*f'(x))
 
     # gamma is IDENTICAL for calls and puts (a consequence of put-call parity: C - P is
@@ -77,7 +77,7 @@ def analytic_greeks(S: float, K: float, T: float, r: float, sigma: float, option
     vega = S * disc_q * np.sqrt(T) * pdf_d1 / 100.0  # /100: report $ per 1 vol POINT (0.01), not per unit of sigma
 
     if option_type == OptionType.CALL:
-        delta = disc_q * norm.cdf(D1)  # ~ risk-neutral P(ITM), discounted for the dividend leakage between now and T
+        delta = disc_q * norm.cdf(D1)  # roughly the risk-neutral P(ITM), discounted for the dividend leakage between now and T
         theta = (
             -S * disc_q * pdf_d1 * sigma / (2 * np.sqrt(T))  # "gamma rent": cost of carrying convexity, always < 0
             - r * K * disc_r * norm.cdf(D2)  # financing cost of the strike payment shrinking as T falls, pulls theta down further
@@ -85,9 +85,9 @@ def analytic_greeks(S: float, K: float, T: float, r: float, sigma: float, option
         ) / 365.0  # annual theta -> $ per calendar day, since desks always quote decay per day, not per year
         rho = K * T * disc_r * norm.cdf(D2) / 100.0  # positive: higher r raises the forward S*e^{(r-q)T}, so calls get more valuable
     else:
-        delta = disc_q * (norm.cdf(D1) - 1.0)  # = -disc_q*N(-D1); negative since puts gain when S falls
+        delta = disc_q * (norm.cdf(D1) - 1.0)  # = -disc_q*N(-D1), negative since puts gain when S falls
         theta = (
-            -S * disc_q * pdf_d1 * sigma / (2 * np.sqrt(T))  # same gamma-rent term -- convexity costs the same regardless of call/put
+            -S * disc_q * pdf_d1 * sigma / (2 * np.sqrt(T))  # same gamma-rent term, convexity costs the same regardless of call/put
             + r * K * disc_r * norm.cdf(-D2)  # sign flips vs. call: the put holder RECEIVES K on exercise, so its rising PV helps here
             - q * S * disc_q * norm.cdf(-D1)  # sign flips vs. call: no missed dividends when short the (implicit) stock exposure
         ) / 365.0

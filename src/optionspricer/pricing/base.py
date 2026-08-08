@@ -12,7 +12,7 @@ Only Black-Scholes has a closed-form derivative of price with respect to
 each input, so only it overrides `greeks()`. Every other engine inherits the
 default implementation below, which gets the Greeks the same way a trading
 desk would if it only had a pricing calculator and no formula sheet: bump
-one input at a time and re-price. This is a Template Method -- the base
+one input at a time and re-price. This is a Template Method: the base
 class owns the *algorithm* for computing Greeks (bump, reprice, finite
 difference), and subclasses only have to supply `price()`.
 """
@@ -28,7 +28,7 @@ from optionspricer.market import Greeks, MarketData, OptionSpec, PriceResult
 @dataclass(frozen=True, slots=True)
 class GreekBumps:
     """Step sizes for finite-difference Greeks. Kept as absolute (not
-    relative) bumps so gamma -- a second difference divided by d_spot**2 --
+    relative) bumps so gamma, a second difference divided by d_spot**2,
     doesn't blow up or vanish depending on the scale of the underlying."""
 
     d_spot: float = 1e-2
@@ -57,17 +57,16 @@ class PricingEngine(ABC):
         Delta and gamma come from bumping spot up and down by `d_spot` and
         combining the three prices (base, up, down) into a first and second
         difference. Vega and rho are the same idea on vol and rate. Theta
-        uses a *forward* difference in time only -- there's no "future"
-        maturity to bump up to, since T only ever counts down -- so it's the
+        uses a *forward* difference in time only: there's no "future"
+        maturity to bump up to, since T only ever counts down, so it's the
         (negative of the) price change from letting one day of calendar time
         pass with everything else fixed.
 
         Simulation-based engines (Monte Carlo) should reseed identically for
-        every call inside one `greeks()` invocation -- see
-        `monte_carlo.py` -- so that the bumped and unbumped prices share the
-        same random draws (common random numbers). Without that, the
-        subtraction below would mostly be measuring sampling noise, not the
-        actual derivative.
+        every call inside one `greeks()` invocation (see `monte_carlo.py`),
+        so that the bumped and unbumped prices share the same random draws
+        (common random numbers). Without that, the subtraction below would
+        mostly be measuring sampling noise, not the actual derivative.
         """
         b = bumps or GreekBumps()
         S, sigma, r = market.spot, market.vol, market.rate

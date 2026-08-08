@@ -1,7 +1,7 @@
 """The one module in this package allowed to touch the network: pulls a
 live options chain via `yfinance` and adapts it into the plain `Quote`
 objects `surface.py` consumes. Nothing else in the package imports this
-module, and `surface.py` doesn't import it either -- that direction of
+module, and `surface.py` doesn't import it either. That direction of
 dependency (data -> surface, never surface -> data) is what keeps every
 other test in this repo runnable offline.
 """
@@ -26,7 +26,7 @@ def _mid_price(row) -> float:
 def fetch_spot(ticker: str) -> float:
     hist = yf.Ticker(ticker).history(period="5d")
     if hist.empty:
-        raise RuntimeError(f"no price history for {ticker!r} -- check the ticker or your connection")
+        raise RuntimeError(f"no price history for {ticker!r}, check the ticker or your connection")
     return float(hist["Close"].iloc[-1])
 
 

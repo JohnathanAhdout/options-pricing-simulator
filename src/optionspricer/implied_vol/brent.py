@@ -1,18 +1,18 @@
 """Brent's method (1973): bisection's guarantee, secant/IQI's speed.
 
 Maintains a bracket [a, b] with f(a) and f(b) of opposite sign, so the root
-is trapped inside no matter what -- that's bisection's guarantee, and it's
+is trapped inside no matter what. That's bisection's guarantee, and it's
 why this solver never needs a starting guess or can fly off to a bad sigma
 the way Newton can. But instead of always bisecting, it first tries a
 faster step: the secant line through the two most recent points, or (once
-three points are available) inverse quadratic interpolation -- fitting a
+three points are available) inverse quadratic interpolation, fitting a
 parabola through the last three (sigma, f(sigma)) pairs in the "sigma as a
 function of f" direction, and jumping to where that parabola hits zero.
 If the fast step would land outside the safe part of the bracket, or isn't
 converging quickly enough, Brent falls back to a plain bisection step for
 that iteration. The result is guaranteed convergence with superlinear
 speed in practice (roughly the golden-ratio rate, ~1.62 extra correct
-digits per step, at best) -- slower per step than Newton near a nice root,
+digits per step, at best), slower per step than Newton near a nice root,
 but immune to Newton's blow-up when vega is tiny.
 """
 
@@ -43,7 +43,7 @@ def solve(
     if abs(fa) < abs(fb):
         a, b, fa, fb = b, a, fb, fa  # enforce the invariant |f(b)| <= |f(a)|: b is always the "closer to zero" endpoint
     c, fc = a, fa  # c: the previous value of b, kept around so inverse quadratic interpolation has 3 distinct points to fit
-    mflag = True  # whether the *last* step taken was a plain bisection -- feeds the two "cond_slow_vs_*" progress checks below
+    mflag = True  # whether the *last* step taken was a plain bisection, feeds the two "cond_slow_vs_*" progress checks below
     d = 0.0  # c from two iterations ago; only used by the (not mflag) progress check
 
     for _ in range(max_iter):
@@ -59,13 +59,13 @@ def solve(
                 + c * fa * fb / ((fc - fa) * (fc - fb))
             )
         else:
-            # only two distinct f-values available (first iteration, or a degenerate step) -- fall back to
+            # only two distinct f-values available (first iteration, or a degenerate step), so fall back to
             # the secant method: draw a straight line through (a,fa) and (b,fb), use where it crosses zero
             s = b - fb * (b - a) / (fb - fa)
 
         lo, hi = sorted(((3 * a + b) / 4, b))  # the "safe zone" a fast step must land in: the inner quarter of the bracket nearest b
-        cond_outside_bracket = not (lo < s < hi)  # the IQI/secant step overshot outside that safe zone -- can't trust it
-        cond_slow_vs_bisection = mflag and abs(s - b) >= abs(b - c) / 2  # last step was bisection, but this step isn't converging at least as fast -- not worth it
+        cond_outside_bracket = not (lo < s < hi)  # the IQI/secant step overshot outside that safe zone, can't trust it
+        cond_slow_vs_bisection = mflag and abs(s - b) >= abs(b - c) / 2  # last step was bisection, but this step isn't converging at least as fast, not worth it
         cond_slow_vs_prior = (not mflag) and abs(s - b) >= abs(c - d) / 2  # same progress check, for when the last step *wasn't* a bisection
         cond_bracket_tiny = mflag and abs(b - c) < tol  # bracket's basically a point already; another fast step risks numerical garbage
         cond_prior_tiny = (not mflag) and abs(c - d) < tol
@@ -78,9 +78,9 @@ def solve(
         fs = f(s)
         d, c, fc = c, b, fb  # shift the 3-point history forward: this iteration's b/fb become next iteration's c/fc
         if fa * fs < 0:
-            b, fb = s, fs  # f changes sign between a and s -- root is in [a, s], so s becomes the new "close" endpoint b
+            b, fb = s, fs  # f changes sign between a and s, so the root is in [a, s] and s becomes the new "close" endpoint b
         else:
-            a, fa = s, fs  # otherwise the root is in [s, b] -- s replaces the far endpoint a instead
+            a, fa = s, fs  # otherwise the root is in [s, b], so s replaces the far endpoint a instead
         if abs(fa) < abs(fb):
             a, b, fa, fb = b, a, fb, fa  # re-enforce |f(b)| <= |f(a)| before the next iteration starts
 

@@ -1,13 +1,13 @@
 """Newton vs. Brent vs. Jaeckel, head to head: accuracy, iteration count,
-and -- the interesting part -- what actually happens in the region where
+and, the interesting part, what actually happens in the region where
 Black-Scholes price stops depending meaningfully on volatility at all.
 
 For every (option type, maturity, moneyness) cell in a grid, price an
 option at a known sigma, hand only the resulting market price to each
 solver, and check how close it gets back to the sigma that generated it.
 Deep in-the-money and deep out-of-the-money contracts, especially near
-expiry, have vega collapsing toward zero -- price is almost entirely
-intrinsic value there, barely a function of sigma -- which makes *inverting*
+expiry, have vega collapsing toward zero. Price is almost entirely
+intrinsic value there, barely a function of sigma, which makes *inverting*
 for sigma an ill-conditioned problem no solver can fix. The interesting
 result isn't just "who has smaller error," it's *how* each solver fails
 when it fails: Newton diverges visibly to a nonsensical sigma (easy to

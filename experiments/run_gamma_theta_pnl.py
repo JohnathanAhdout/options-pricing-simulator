@@ -9,17 +9,17 @@ volatility was priced in:
 
     P&L = -0.5 * integral[ Gamma(t) * S(t)^2 * (sigma_realized^2 - sigma_h^2) dt ]
 
-(negative sign because a short straddle's gamma is itself negative -- see
+(negative sign because a short straddle's gamma is itself negative; see
 `portfolio_greeks`). Three things get checked against simulation here:
 
-1. Sweeping realized vol away from the hedge vol in both directions --
+1. Sweeping realized vol away from the hedge vol in both directions:
    does the mean simulated P&L actually track the theoretical curve, and
    is the sign right (short gamma wins when the world is calmer than
    priced, loses when it's wilder)?
-2. Holding realized == hedge vol -- is the hedge P&L unbiased, i.e. does
+2. Holding realized == hedge vol: is the hedge P&L unbiased, i.e. does
    selling "fair" volatility and hedging it perfectly break even in
    expectation, exactly as theory demands?
-3. Rebalancing frequency -- does hedging more often leave the *mean* P&L
+3. Rebalancing frequency: does hedging more often leave the *mean* P&L
    basically where it was (theory says discretization doesn't bias the
    result) while shrinking its *variance* (theory says the hedging-error
    variance should fall as rebalancing gets more frequent)?

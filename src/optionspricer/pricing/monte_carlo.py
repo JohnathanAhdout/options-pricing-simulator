@@ -1,7 +1,7 @@
 """Monte Carlo pricing: price an option by simulating the risk-neutral
 terminal distribution of the underlying and averaging discounted payoffs.
 Converges to the Black-Scholes price as n_paths -> infinity by the Law of
-Large Numbers -- it exists here as an independent cross-check of the
+Large Numbers. It exists here as an independent cross-check of the
 closed form (see experiments/run_mc_convergence.py) and as a template for
 pricing payoffs that don't have one, which is most of them.
 
@@ -9,7 +9,7 @@ The one design choice worth calling out: `MonteCarloEngine` reseeds its RNG
 from `self.seed` on *every* call to `price()`, rather than advancing a
 single stream. Two consequences fall out of that:
 
-1. `engine.price(option, market)` is a pure function of its arguments -- call
+1. `engine.price(option, market)` is a pure function of its arguments: call
    it twice with the same inputs and you get bit-identical output. That's
    what "reproducible" means, and it's what lets a test suite assert exact
    equality on a Monte Carlo price instead of "close to within some
@@ -18,7 +18,7 @@ single stream. Two consequences fall out of that:
    `price()` five times with slightly bumped market data. Because every one
    of those calls draws the *same* underlying Z's (same seed), the bumped
    and unbumped payoffs are correlated draws of the same random experiment,
-   not independent ones -- so the differences that go into delta/gamma/vega
+   not independent ones, so the differences that go into delta/gamma/vega
    are (mostly) differences in the deterministic bump, not differences in
    sampling noise. This is the standard variance-reduction trick of
    common random numbers, and here it's a free side effect of reseeding

@@ -29,7 +29,7 @@ def test_robust_solvers_recover_true_vol(solver_cls, name, S, K, T, r, sigma, ot
 @pytest.mark.parametrize("name,S,K,T,r,sigma,otype,q", CASES, ids=[c[0] for c in CASES])
 def test_newton_recovers_true_vol_in_well_conditioned_cases(name, S, K, T, r, sigma, otype, q):
     if name == "Deep OTM put":
-        pytest.skip("known Newton failure mode -- see test_newton_fails_on_near_zero_vega")
+        pytest.skip("known Newton failure mode, see test_newton_fails_on_near_zero_vega")
     market_price = bs_price(S, K, T, r, sigma, otype, q)
     iv = NewtonSolver().solve(market_price, S, K, T, r, otype, q)
     assert iv == pytest.approx(sigma, abs=1e-4)
@@ -40,7 +40,7 @@ def test_newton_fails_on_near_zero_vega():
     OTM put close to expiry has vega near zero, so Newton's division by
     vega blows the iterate up to a nonsensical volatility. Brent and
     Jaeckel (which falls back to Brent) both stay correct on the exact
-    same input -- this is why the package defaults to Jaeckel for surface
+    same input, which is why the package defaults to Jaeckel for surface
     construction instead of Newton."""
     S, K, T, r, sigma = 100, 70, 0.1, 0.05, 0.30
     market_price = bs_price(S, K, T, r, sigma, OptionType.PUT)

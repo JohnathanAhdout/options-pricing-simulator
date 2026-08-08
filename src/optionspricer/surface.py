@@ -4,8 +4,8 @@ option quotes.
 Deliberately decoupled from where the quotes come from: everything here
 takes a plain list of `Quote` and an `IVSolver`, so it works identically on
 live SPY quotes (`data.py`) or on synthetic quotes generated in a test.
-That decoupling is also *why* it's testable at all without a network call
--- feed `implied_vols` a batch of quotes priced off a made-up smile
+That decoupling is also *why* it's testable at all without a network call.
+Feed `implied_vols` a batch of quotes priced off a made-up smile
 function and it should recover that exact smile, which is what
 `tests/test_surface.py` checks.
 
@@ -44,7 +44,7 @@ class IVPoint:
 
 def _no_arbitrage_lower_bound(quote: Quote, spot: float, r: float, q: float) -> float:
     """A European call must be worth at least its discounted intrinsic
-    value, max(S*e^{-qT} - K*e^{-rT}, 0) -- otherwise buying the call,
+    value, max(S*e^{-qT} - K*e^{-rT}, 0), otherwise buying the call,
     exercising, and selling the stock is free money. A quote priced at or
     below this is a stale or broken price, not a signal about volatility."""
     if quote.option_type != OptionType.CALL:
@@ -75,13 +75,13 @@ def implied_vols(
 
 def smile_at_maturity(points: list[IVPoint], maturity: float, tol: float = 1e-6) -> tuple[np.ndarray, np.ndarray]:
     """(strikes, ivs), sorted by strike, for every point at the given
-    maturity -- one cross-section of the surface, holding T fixed."""
+    maturity: one cross-section of the surface, holding T fixed."""
     matched = sorted((p for p in points if abs(p.maturity - maturity) < tol), key=lambda p: p.strike)
     return np.array([p.strike for p in matched]), np.array([p.iv for p in matched])
 
 
 def term_structure(points: list[IVPoint]) -> tuple[np.ndarray, np.ndarray]:
-    """(maturities, ivs), sorted by maturity -- one IV per maturity, using
+    """(maturities, ivs), sorted by maturity: one IV per maturity, using
     whichever point in `points` is closest to the median strike at that
     maturity (a proxy for "the ATM point") when more than one is present."""
     by_maturity: dict[float, list[IVPoint]] = {}

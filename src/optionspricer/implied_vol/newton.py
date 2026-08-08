@@ -2,8 +2,8 @@
 
 sigma_{n+1} = sigma_n - f(sigma_n) / f'(sigma_n), where f(sigma) is the
 pricing error `bs_price(sigma) - market_price` and f'(sigma) is vega. Near
-the root this converges *quadratically* -- each step roughly squares the
-number of correct decimal digits -- which is the fastest of the three
+the root this converges *quadratically*: each step roughly squares the
+number of correct decimal digits, which is the fastest of the three
 solvers here when it works. Its one failure mode is exactly where vega is
 small: deep out-of-the-money or very close to expiry, where the price
 curve is nearly flat in sigma, so a tiny pricing error implies a huge step
@@ -41,9 +41,9 @@ def solve(
             return sigma  # close enough: f(sigma) ~= 0
         vega = S * np.exp(-q * T) * np.sqrt(T) * norm.pdf(d1(S, K, T, r, sigma, q))  # f'(sigma), i.e. raw (unscaled) vega
         if abs(vega) < 1e-12:
-            break  # curve is locally flat here; dividing by ~0 next would send sigma flying -- bail out instead
+            break  # curve is locally flat here; dividing by ~0 next would send sigma flying, so bail out instead
         sigma -= diff / vega  # the Newton step itself: sigma_{n+1} = sigma_n - f(sigma_n)/f'(sigma_n)
-        sigma = max(sigma, 1e-8)  # keep sigma positive -- d1/d2 are undefined at sigma <= 0
+        sigma = max(sigma, 1e-8)  # keep sigma positive: d1/d2 are undefined at sigma <= 0
     return sigma
 
 

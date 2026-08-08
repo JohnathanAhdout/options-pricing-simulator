@@ -1,12 +1,12 @@
 """Pure functions for simulating the underlying. Three variants, each used
 by a different part of the package:
 
-- `gbm_terminal`: only the distribution at expiry -- all Monte Carlo pricing
+- `gbm_terminal`: only the distribution at expiry. All Monte Carlo pricing
   needs, since a European payoff only looks at S_T.
-- `gbm_path`: the whole trajectory at a fixed volatility -- what the
+- `gbm_path`: the whole trajectory at a fixed volatility, what the
   delta-hedging simulator walks tick by tick.
 - `regime_switching_gbm_path`: a trajectory whose volatility itself jumps
-  between a small number of states according to a Markov chain -- the
+  between a small number of states according to a Markov chain: the
   synthetic world the regime-detection experiment tries to detect and react
   to. It's also just "GBM," except sigma(t) is itself the output of a
   discrete-time Markov chain instead of a constant.
@@ -25,9 +25,9 @@ import numpy as np
 def gbm_terminal(S0: float, T: float, r: float, sigma: float, q: float, n_paths: int, rng: np.random.Generator) -> np.ndarray:
     """S_T for n_paths independent draws of geometric Brownian motion:
     S_T = S0 * exp((r - q - sigma^2/2) T + sigma sqrt(T) Z), Z ~ N(0, 1).
-    The (r - q - sigma^2/2) drift is the Ito-corrected risk-neutral drift --
+    The (r - q - sigma^2/2) drift is the Ito-corrected risk-neutral drift;
     see BACKGROUND.md for why the naive (r - q) is wrong."""
-    Z = rng.standard_normal(n_paths)  # n_paths independent draws of a standard normal -- one terminal shock per path
+    Z = rng.standard_normal(n_paths)  # n_paths independent draws of a standard normal, one terminal shock per path
     return S0 * np.exp((r - q - 0.5 * sigma**2) * T + sigma * np.sqrt(T) * Z)  # vectorized: every path's S_T computed in one shot
 
 
@@ -37,7 +37,7 @@ def gbm_path(S0: float, T: float, r: float, sigma: float, q: float, n_steps: int
     is both faster and numerically better-conditioned than compounding
     prices step by step."""
     dt = T / n_steps  # length of one step, in years
-    Z = rng.standard_normal((n_paths, n_steps))  # one independent N(0,1) shock per (path, step) -- draws the whole batch at once
+    Z = rng.standard_normal((n_paths, n_steps))  # one independent N(0,1) shock per (path, step), draws the whole batch at once
     log_returns = (r - q - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z  # each step's log-return: Ito-corrected drift*dt + vol*sqrt(dt)*Z
     log_paths = np.cumsum(log_returns, axis=1)  # running sum along the time axis = log(S_t / S0) at every step, for every path
     S = S0 * np.exp(log_paths)  # convert cumulative log-returns back into absolute prices
@@ -73,7 +73,7 @@ def regime_switching_gbm_path(
     log_returns = np.zeros(n_steps)
 
     # inherently sequential (each state depends on the previous one), so this one can't be
-    # vectorized across t the way gbm_path is -- the Markov-chain draw has to happen one step at a time
+    # vectorized across t the way gbm_path is: the Markov-chain draw has to happen one step at a time
     for t in range(1, n_steps + 1):
         prev_state = states[t - 1]
         states[t] = rng.choice(n_states, p=transition_matrix[prev_state])  # roll the Markov chain forward one tick
