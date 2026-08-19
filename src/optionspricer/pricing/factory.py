@@ -10,33 +10,33 @@ experiments/*.py iterate over "every registered engine" generically instead
 of hardcoding a list that has to be kept in sync by hand.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postpones type-hint evaluation, same rationale as market.py
 
-from optionspricer.pricing.base import PricingEngine
-from optionspricer.pricing.binomial import BinomialEngine
+from optionspricer.pricing.base import PricingEngine  # the common type every registry value is a subclass of
+from optionspricer.pricing.binomial import BinomialEngine  # imported here (not lazily) so registration below can run at import time
 from optionspricer.pricing.black_scholes import BlackScholesEngine
 from optionspricer.pricing.monte_carlo import MonteCarloEngine
 
-_REGISTRY: dict[str, type[PricingEngine]] = {}
+_REGISTRY: dict[str, type[PricingEngine]] = {}  # name -> class, not name -> instance; instantiated fresh on every create_pricing_engine call
 
 
-def register_engine(name: str, engine_cls: type[PricingEngine]) -> None:
-    _REGISTRY[name] = engine_cls
+def register_engine(name: str, engine_cls: type[PricingEngine]) -> None:  # called once per engine, at the bottom of this file
+    _REGISTRY[name] = engine_cls  # mutates the module-level dict; no return value needed
 
 
-def create_pricing_engine(name: str, **kwargs) -> PricingEngine:
+def create_pricing_engine(name: str, **kwargs) -> PricingEngine:  # **kwargs forwards constructor args, e.g. n_steps=500 for BinomialEngine
     """Build a `PricingEngine` by name, e.g. `create_pricing_engine("binomial", n_steps=500)`."""
     try:
-        engine_cls = _REGISTRY[name]
+        engine_cls = _REGISTRY[name]  # KeyError here means the name was never registered
     except KeyError:
-        raise ValueError(f"unknown pricing engine {name!r}; available: {sorted(_REGISTRY)}") from None
-    return engine_cls(**kwargs)
+        raise ValueError(f"unknown pricing engine {name!r}; available: {sorted(_REGISTRY)}") from None  # `from None` suppresses the KeyError traceback, since it's not useful context for the caller
+    return engine_cls(**kwargs)  # instantiate the class, passing through whatever kwargs the caller supplied
 
 
-def available_engines() -> list[str]:
-    return sorted(_REGISTRY)
+def available_engines() -> list[str]:  # what experiments/*.py loop over instead of hardcoding a list
+    return sorted(_REGISTRY)  # sorted() on a dict iterates its keys; alphabetical order makes output/plots reproducible
 
 
-register_engine("black_scholes", BlackScholesEngine)
+register_engine("black_scholes", BlackScholesEngine)  # these three calls run once, when this module is first imported
 register_engine("monte_carlo", MonteCarloEngine)
 register_engine("binomial", BinomialEngine)

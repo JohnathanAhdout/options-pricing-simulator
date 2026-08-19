@@ -10,17 +10,17 @@ and adversarial (deep OTM, near-expiry) conditions, and BACKGROUND.md for
 why the root is guaranteed to exist and be unique in the first place.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postpones type-hint evaluation, same rationale as market.py
 
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod  # same ABC/abstractmethod mechanism as PricingEngine in pricing/base.py
 
-from optionspricer.market import OptionType
+from optionspricer.market import OptionType  # the only value object a solver needs; no MarketData/OptionSpec, since inputs are passed as plain floats here
 
 
-class IVSolver(ABC):
-    name: str
+class IVSolver(ABC):  # every concrete solver (NewtonSolver, BrentSolver, JaeckelSolver) inherits from this
+    name: str  # class-level type annotation, not an assignment: each subclass must set its own string (e.g. "newton")
 
-    @abstractmethod
+    @abstractmethod  # every solver MUST implement solve(); there's no shared default the way PricingEngine.greeks() has one
     def solve(
         self,
         market_price: float,

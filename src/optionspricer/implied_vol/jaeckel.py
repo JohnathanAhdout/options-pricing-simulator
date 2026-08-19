@@ -25,35 +25,35 @@ on genuinely pathological inputs), this falls back to `BrentSolver`, which
 is slower but can't fail to bracket a root that's known to exist.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postpones type-hint evaluation, same rationale as market.py
 
-import numpy as np
-from scipy.stats import norm
+import numpy as np  # exp, log, sqrt, clip
+from scipy.stats import norm  # norm.pdf for vega; norm.ppf (inverse CDF) for the initial-theta guess below
 
-from optionspricer.implied_vol.base import IVSolver
-from optionspricer.implied_vol.brent import solve as brent_solve
+from optionspricer.implied_vol.base import IVSolver  # the interface JaeckelSolver implements
+from optionspricer.implied_vol.brent import solve as brent_solve  # the guaranteed-convergence fallback if Halley fails
 from optionspricer.market import OptionType
-from optionspricer.pricing.black_scholes import price as bs_price
+from optionspricer.pricing.black_scholes import price as bs_price  # aliased to avoid shadowing this module's own solve()
 
 
-def _initial_theta(x: float, beta_tv: float) -> float:
+def _initial_theta(x: float, beta_tv: float) -> float:  # x: log-forward-moneyness; beta_tv: normalized time value (both defined in solve() below)
     """Closed-form starting guess for theta = sigma*sqrt(T), inverting the
     small- and large-|x| asymptotics of the normalized price. Derived in
     full in BACKGROUND.md; the three branches are the ATM, OTM, and ITM
     regimes of the normalized Black-Scholes formula."""
-    eps = 0.01
+    eps = 0.01  # threshold below which x is treated as "close enough to the money" to use the ATM branch
     if abs(x) < eps:
         # ATM: both N(d1), N(d2) ~= 0.5, and beta_tv ~= theta / sqrt(2 pi)
         return np.sqrt(2.0 * np.pi) * beta_tv
     if x < 0:
         # OTM call: N(d2) ~= 0, beta_tv driven by the N(d1) term alone
-        u = np.clip(beta_tv * np.exp(-x / 2), 1e-12, 1 - 1e-12)
+        u = np.clip(beta_tv * np.exp(-x / 2), 1e-12, 1 - 1e-12)  # clipped away from exactly 0 or 1, where norm.ppf below would return +/- infinity
         y = norm.ppf(u)  # ~= d1 = x/theta + theta/2
         return y + np.sqrt(max(y**2 - 2 * x, 0.0))  # solves theta^2 - 2*y*theta - 2x = 0
     # ITM call: N(d1) ~= 1, beta_tv driven by the N(-d2) term
-    u = np.clip(beta_tv * np.exp(x / 2), 1e-12, 1 - 1e-12)
+    u = np.clip(beta_tv * np.exp(x / 2), 1e-12, 1 - 1e-12)  # same clipping rationale as the OTM branch above
     y = norm.ppf(u)  # ~= -d2 = -x/theta + theta/2
-    return y + np.sqrt(max(y**2 + 2 * x, 0.0))
+    return y + np.sqrt(max(y**2 + 2 * x, 0.0))  # the ITM analogue of the OTM branch's quadratic solution
 
 
 def solve(
@@ -64,15 +64,15 @@ def solve(
     r: float,
     option_type: OptionType,
     q: float = 0.0,
-    tol: float = 1e-10,
-    max_iter: int = 10,
+    tol: float = 1e-10,  # tighter than Newton's or Brent's default, since Halley's cubic convergence makes tight tolerances cheap
+    max_iter: int = 10,  # far smaller budget than Brent's 200: cubic convergence needs only a handful of steps when it works at all
 ) -> float:
-    market_price_orig, option_type_orig = market_price, option_type
+    market_price_orig, option_type_orig = market_price, option_type  # stashed unmodified, in case the put-to-call conversion below runs and the Brent fallback later needs the ORIGINAL put price
 
     if option_type == OptionType.PUT:
         # put-call parity via the forward: C = P + disc*(F - K); implied vol is
         # identical for a put and its parity-equivalent call at the same (K, T)
-        market_price = market_price + S * np.exp(-q * T) - K * np.exp(-r * T)
+        market_price = market_price + S * np.exp(-q * T) - K * np.exp(-r * T)  # convert the put price into its parity-equivalent call price
 
     F = S * np.exp((r - q) * T)  # forward price: the risk-neutral expectation of S_T, E^Q[S_T] = F
     discount = np.exp(-r * T)  # PV of $1 at T
@@ -102,20 +102,20 @@ def solve(
         # f is exactly linear (f''=0) this correction is 1 and Halley collapses to Newton exactly.
         # The curvature term is what damps the step and prevents Newton-style overshoot near-zero-vega
         denom = 1.0 - (diff * vega2) / (2.0 * vega**2)
-        sigma -= (diff / vega) / denom if abs(denom) > 1e-12 else diff / vega
-        sigma = max(sigma, 1e-8)
+        sigma -= (diff / vega) / denom if abs(denom) > 1e-12 else diff / vega  # falls back to a plain Newton step if the curvature-corrected denominator is itself ~0
+        sigma = max(sigma, 1e-8)  # keep sigma positive, same floor as Newton's solver
 
-    if abs(bs_price(S, K, T, r, sigma, OptionType.CALL, q) - market_price) > tol * 100:
-        return brent_solve(market_price_orig, S, K, T, r, option_type_orig, q, tol=tol)
-    return sigma
+    if abs(bs_price(S, K, T, r, sigma, OptionType.CALL, q) - market_price) > tol * 100:  # loosely re-check convergence: did the loop above actually find a root, or exhaust its budget without one?
+        return brent_solve(market_price_orig, S, K, T, r, option_type_orig, q, tol=tol)  # fall back on the ORIGINAL (possibly put) inputs, not the converted call price
+    return sigma  # Halley converged (or came close enough); no need for the Brent fallback
 
 
-class JaeckelSolver(IVSolver):
-    name = "jaeckel"
+class JaeckelSolver(IVSolver):  # the imperative shell: adapts the solve() function above to the common IVSolver interface
+    name = "jaeckel"  # the string every factory/experiment uses to select this solver
 
-    def __init__(self, tol: float = 1e-10, max_iter: int = 10):
+    def __init__(self, tol: float = 1e-10, max_iter: int = 10):  # mirrors solve()'s keyword defaults, stored per-instance
         self.tol = tol
         self.max_iter = max_iter
 
-    def solve(self, market_price: float, S: float, K: float, T: float, r: float, option_type: OptionType, q: float = 0.0) -> float:
-        return solve(market_price, S, K, T, r, option_type, q, self.tol, self.max_iter)
+    def solve(self, market_price: float, S: float, K: float, T: float, r: float, option_type: OptionType, q: float = 0.0) -> float:  # note: shadows the module-level solve() function above
+        return solve(market_price, S, K, T, r, option_type, q, self.tol, self.max_iter)  # delegates to the module-level function, filling in the instance's stored settings

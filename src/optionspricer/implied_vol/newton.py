@@ -11,31 +11,31 @@ and the iteration can fly off to a nonsensical sigma. `BrentSolver` exists
 precisely to have something safe to fall back on in that regime.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postpones type-hint evaluation, same rationale as market.py
 
-import numpy as np
-from scipy.stats import norm
+import numpy as np  # exp, sqrt, used to compute vega inline
+from scipy.stats import norm  # norm.pdf: the bell-curve height needed for vega
 
-from optionspricer.implied_vol.base import IVSolver
+from optionspricer.implied_vol.base import IVSolver  # the interface NewtonSolver implements
 from optionspricer.market import OptionType
-from optionspricer.pricing.black_scholes import d1, price as bs_price
+from optionspricer.pricing.black_scholes import d1, price as bs_price  # d1 for the vega formula; price aliased to bs_price to avoid shadowing this module's own solve()
 
 
 def solve(
-    market_price: float,
+    market_price: float,  # the price this function is trying to reproduce by adjusting sigma
     S: float,
     K: float,
     T: float,
     r: float,
     option_type: OptionType,
     q: float = 0.0,
-    sigma0: float = 0.2,
-    tol: float = 1e-8,
+    sigma0: float = 0.2,  # starting guess: 20% vol, a generic default with no attempt at being smart about it
+    tol: float = 1e-8,  # convergence threshold on the pricing error, not on sigma itself
     max_iter: int = 50,
 ) -> float:
     sigma = sigma0  # start from a generic guess; unlike Jaeckel there's no attempt at a smart initial value here
     for _ in range(max_iter):
-        model_price = bs_price(S, K, T, r, sigma, option_type, q)
+        model_price = bs_price(S, K, T, r, sigma, option_type, q)  # re-price at the CURRENT sigma guess, every iteration
         diff = model_price - market_price  # f(sigma) = model price at the current guess, minus what we're trying to match
         if abs(diff) < tol:
             return sigma  # close enough: f(sigma) ~= 0
@@ -44,16 +44,16 @@ def solve(
             break  # curve is locally flat here; dividing by ~0 next would send sigma flying, so bail out instead
         sigma -= diff / vega  # the Newton step itself: sigma_{n+1} = sigma_n - f(sigma_n)/f'(sigma_n)
         sigma = max(sigma, 1e-8)  # keep sigma positive: d1/d2 are undefined at sigma <= 0
-    return sigma
+    return sigma  # reached only if max_iter was exhausted or the vega-underflow break fired: best-effort, not guaranteed converged
 
 
-class NewtonSolver(IVSolver):
-    name = "newton"
+class NewtonSolver(IVSolver):  # the imperative shell: adapts the solve() function above to the common IVSolver interface
+    name = "newton"  # the string every factory/experiment uses to select this solver
 
-    def __init__(self, sigma0: float = 0.2, tol: float = 1e-8, max_iter: int = 50):
+    def __init__(self, sigma0: float = 0.2, tol: float = 1e-8, max_iter: int = 50):  # mirrors solve()'s keyword defaults, stored per-instance
         self.sigma0 = sigma0
         self.tol = tol
         self.max_iter = max_iter
 
-    def solve(self, market_price: float, S: float, K: float, T: float, r: float, option_type: OptionType, q: float = 0.0) -> float:
-        return solve(market_price, S, K, T, r, option_type, q, self.sigma0, self.tol, self.max_iter)
+    def solve(self, market_price: float, S: float, K: float, T: float, r: float, option_type: OptionType, q: float = 0.0) -> float:  # note: shadows the module-level solve() function above, same pattern as BlackScholesEngine.price
+        return solve(market_price, S, K, T, r, option_type, q, self.sigma0, self.tol, self.max_iter)  # delegates to the module-level function, filling in the instance's stored settings

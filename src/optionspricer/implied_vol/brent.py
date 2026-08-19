@@ -16,11 +16,11 @@ digits per step, at best), slower per step than Newton near a nice root,
 but immune to Newton's blow-up when vega is tiny.
 """
 
-from __future__ import annotations
+from __future__ import annotations  # postpones type-hint evaluation, same rationale as market.py
 
-from optionspricer.implied_vol.base import IVSolver
+from optionspricer.implied_vol.base import IVSolver  # the interface BrentSolver implements
 from optionspricer.market import OptionType
-from optionspricer.pricing.black_scholes import price as bs_price
+from optionspricer.pricing.black_scholes import price as bs_price  # aliased to avoid shadowing this module's own solve()
 
 
 def solve(
@@ -32,10 +32,10 @@ def solve(
     option_type: OptionType,
     q: float = 0.0,
     tol: float = 1e-8,
-    max_iter: int = 200,
+    max_iter: int = 200,  # much larger than Newton's default: bisection steps alone converge only linearly
 ) -> float:
-    def f(sigma: float) -> float:
-        return bs_price(S, K, T, r, sigma, option_type, q) - market_price
+    def f(sigma: float) -> float:  # local closure over S, K, T, r, option_type, q, market_price, so callers below can just write f(x)
+        return bs_price(S, K, T, r, sigma, option_type, q) - market_price  # the pricing error at a candidate sigma: this is the root-finding target
 
     low, high = 1e-4, 5.0  # BS price is monotone in sigma, so any real market price has exactly one root in [0.01%, 500%] vol
     a, fa = low, f(low)  # a: one end of the bracket
@@ -75,7 +75,7 @@ def solve(
         else:
             mflag = False  # the fast step was accepted; remember that for next iteration's progress check
 
-        fs = f(s)
+        fs = f(s)  # the ONE new function evaluation this iteration spends, regardless of which branch chose s
         d, c, fc = c, b, fb  # shift the 3-point history forward: this iteration's b/fb become next iteration's c/fc
         if fa * fs < 0:
             b, fb = s, fs  # f changes sign between a and s, so the root is in [a, s] and s becomes the new "close" endpoint b
@@ -84,15 +84,15 @@ def solve(
         if abs(fa) < abs(fb):
             a, b, fa, fb = b, a, fb, fa  # re-enforce |f(b)| <= |f(a)| before the next iteration starts
 
-    return b
+    return b  # max_iter exhausted without hitting the tolerance check; return the best endpoint found so far
 
 
-class BrentSolver(IVSolver):
-    name = "brent"
+class BrentSolver(IVSolver):  # the imperative shell: adapts the solve() function above to the common IVSolver interface
+    name = "brent"  # the string every factory/experiment uses to select this solver
 
-    def __init__(self, tol: float = 1e-8, max_iter: int = 200):
+    def __init__(self, tol: float = 1e-8, max_iter: int = 200):  # no starting-guess parameter, unlike NewtonSolver: Brent never needs one
         self.tol = tol
         self.max_iter = max_iter
 
-    def solve(self, market_price: float, S: float, K: float, T: float, r: float, option_type: OptionType, q: float = 0.0) -> float:
-        return solve(market_price, S, K, T, r, option_type, q, self.tol, self.max_iter)
+    def solve(self, market_price: float, S: float, K: float, T: float, r: float, option_type: OptionType, q: float = 0.0) -> float:  # note: shadows the module-level solve() function above
+        return solve(market_price, S, K, T, r, option_type, q, self.tol, self.max_iter)  # delegates to the module-level function, filling in the instance's stored settings

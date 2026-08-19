@@ -1,28 +1,33 @@
+# package metadata: name/version/description shown by `pip show`, `uv pip list`, and PyPI if ever published
 [project]
 name = "optionspricer"
 version = "0.1.0"
 description = "An options pricing and volatility-trading research toolkit: pluggable pricing engines, implied-vol solvers, and P&L-attribution experiments."
-readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
+readme = "README.md"  # rendered as the package's long description if published
+requires-python = ">=3.10"  # match statements and PEP 604 unions (`X | Y`) used throughout src/ need at least this
+dependencies = [  # always installed; every module in src/ that isn't network-facing depends on the first three
     "numpy>=1.26",
     "scipy>=1.11",
     "matplotlib>=3.8",
-    "pandas>=2.1",
-    "yfinance>=0.2.40",
+    "pandas>=2.1",  # a yfinance transitive dependency in practice, not imported directly by this package's own code
+    "yfinance>=0.2.40",  # only data.py imports this; every other module stays runnable offline
 ]
 
+# extra dependencies, installed only via `uv sync --extra dev`
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.0",
+    "pytest>=8.0",  # the only dev-only dependency: nothing in src/ imports pytest
 ]
 
+# which tool builds the installable package, and how
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+# tells hatchling the package root is src/optionspricer, not the repo root
 [tool.hatch.build.targets.wheel]
 packages = ["src/optionspricer"]
 
+# lets `uv run pytest` (no path argument) find the test suite
 [tool.pytest.ini_options]
 testpaths = ["tests"]
